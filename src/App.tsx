@@ -11,6 +11,7 @@ import { TraderPeekDrawer } from './components/TraderPeekDrawer';
 import { MarketWebSocketProvider, useMarketStream } from './context/MarketWebSocketContext';
 import type { IndexedTrader } from './types/risex';
 import { isValidAddress, isValidTxHash } from './utils/format';
+import { matchesTraderQuery } from './utils/traderDisplay';
 
 function parseUrlRoute(): {
   tab: NavTab;
@@ -159,7 +160,9 @@ function AppContent() {
         const sRes = await sHttp.json();
         if (sRes?.traders?.length > 0) {
           const exact = sRes.traders.find(
-            (t: IndexedTrader) => t.username && t.username.toLowerCase() === q.toLowerCase()
+            (t: IndexedTrader) =>
+              (t.username && t.username.toLowerCase() === q.toLowerCase()) ||
+              matchesTraderQuery(t, q)
           );
           handleSelectWallet((exact || sRes.traders[0]).address);
           return;
@@ -188,7 +191,7 @@ function AppContent() {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col text-[#e8edfb]">
+    <div className="relative min-h-screen flex flex-col text-slate-900 dark:text-[#e8edfb]">
       <div className="sunrise-bg" />
 
       <Navbar
@@ -202,7 +205,7 @@ function AppContent() {
 
       <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-6 sm:px-6">
         {searchNotice && (
-          <div className="mb-4 rounded-xl border border-[#ffb02e]/35 bg-[#ffb02e]/10 px-4 py-2.5 text-xs text-[#ffb02e]">
+          <div className="mb-4 rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-800 dark:border-[#ffb02e]/35 dark:bg-[#ffb02e]/10 dark:text-[#ffb02e]">
             {searchNotice}
           </div>
         )}
@@ -277,8 +280,8 @@ function AppContent() {
         onSelectMarket={handleSelectMarket}
       />
 
-      <footer className="border-t border-slate-800/70 bg-[#05070d]/90 py-4 px-6">
-        <div className="mx-auto flex max-w-[1440px] flex-col gap-2 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+      <footer className="border-t border-slate-200/80 bg-white/80 py-4 px-6 dark:border-slate-800/70 dark:bg-[#05070d]/90 transition-colors">
+        <div className="mx-auto flex max-w-[1440px] flex-col gap-2 text-xs text-slate-500 dark:text-slate-400 sm:flex-row sm:items-center sm:justify-between">
           <div>
             RISExScan · Live market, trader, realized PnL & on-chain explorer for RISEx on RISE Mainnet
           </div>
@@ -287,7 +290,7 @@ function AppContent() {
               href="https://docs.risechain.com/docs/risex/about/overview"
               target="_blank"
               rel="noreferrer"
-              className="hover:text-[#ffb02e] transition-colors"
+              className="hover:text-amber-600 dark:hover:text-[#ffb02e] transition-colors"
             >
               RISEx Docs
             </a>
@@ -295,7 +298,7 @@ function AppContent() {
               href="https://explorer.risechain.com/"
               target="_blank"
               rel="noreferrer"
-              className="hover:text-[#ffb02e] transition-colors"
+              className="hover:text-amber-600 dark:hover:text-[#ffb02e] transition-colors"
             >
               RISE Blockscout
             </a>

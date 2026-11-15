@@ -29,8 +29,26 @@ import {
 import { CopyBtn, LiqDistanceBadge, TokenBadge, TraderAvatar } from './TraderAvatar';
 import { useMarketStream } from '../context/MarketWebSocketContext';
 import { deriveLiveLiquidationRisk, mergeExplorerTradeTape, type ExplorerRiskCandidate } from '../utils/explorerLive';
+import { formatTraderDisplay } from '../utils/traderDisplay';
 
 export type ExplorerSubTab = 'blocks' | 'trades' | 'liquidations' | 'funding' | 'decoder';
+
+const KNOWN_RISEX_SELECTORS: Record<string, string> = {
+  '0xf22aeaaa': 'placePerpsOrder',
+  '0xb521f2fb': 'cancelPerpsOrder',
+  '0xad3bd55f': 'pumpDirtyLevels',
+};
+
+function formatExplorerMethod(tx: ExplorerTx): string {
+  const decoded = (tx as any)?.decoded_input?.method_call;
+  if (typeof decoded === 'string' && decoded.trim()) {
+    return decoded.split('(')[0].trim();
+  }
+  const raw = String(tx.method || '').trim();
+  const mapped = KNOWN_RISEX_SELECTORS[raw.toLowerCase()];
+  if (mapped) return mapped;
+  return raw || 'call';
+}
 
 export const ExplorerPage: React.FC<{
   initialTxHash: string | null;
@@ -47,6 +65,9 @@ export const ExplorerPage: React.FC<{
   const [chainHead, setChainHead] = useState<number | null>(null);
   const [explorerFetchedAt, setExplorerFetchedAt] = useState<number | null>(null);
   const [blocksAvailable, setBlocksAvailable] = useState(true);
+  const [rpcBlocks, setRpcBlocks] = useState<ExplorerBlock[]>([]);
+  const [rpcFetchedAt, setRpcFetchedAt] = useState<number | null>(null);
+  const [rpcOnline, setRpcOnline] = useState(false);
   const [markets, setMarkets] = useState<RisexMarket[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -114,6 +135,44 @@ export const ExplorerPage: React.FC<{
     };
   }, []);
 
+  // Near-real-time chain blocks come from RISE RPC; Blockscout's indexed
+  // contract transactions are a separate, eventually consistent data source.
+  useEffect(() => {
+    if (subTab !== 'blocks') return;
+    let disposed = false;
+    let inFlight = false;
+    const loadHead = async () => {
+      if (inFlight || document.visibilityState !== 'visible') return;
+      inFlight = true;
+      try {
+        const res = await fetch('/api/chain/live', { cache: 'no-store' });
+        if (!res.ok) throw new Error('RPC temporarily unavailable');
+        const payload = await res.json();
+        if (disposed) return;
+        if (Array.isArray(payload.blocks) && payload.blocks.length > 0) {
+          setRpcBlocks(payload.blocks);
+          setRpcFetchedAt(Date.now());
+          setRpcOnline(true);
+        } else {
+          setRpcOnline(false);
+        }
+      } catch {
+        if (!disposed) setRpcOnline(false);
+      } finally {
+        inFlight = false;
+      }
+    };
+    void loadHead();
+    const interval = setInterval(loadHead, 2000);
+    const onVisibility = () => { if (document.visibilityState === 'visible') void loadHead(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      disposed = true;
+      document.removeEventListener('visibilitychange', onVisibility);
+      clearInterval(interval);
+    };
+  }, [subTab]);
+
   const inspectHash = async (hash: string) => {
     const clean = hash.trim();
     if (!clean) return;
@@ -145,8 +204,13 @@ export const ExplorerPage: React.FC<{
     : (markets.length > 0 ? markets : streamedMarkets);
   const atRisk = useMemo(() => deriveLiveLiquidationRisk(riskCandidates, liveMarkets), [riskCandidates, liveMarkets]);
   const tradeTape = useMemo(() => mergeExplorerTradeTape(socketTrades, recentTrades), [socketTrades, recentTrades]);
+  const rpcHead = rpcOnline && rpcBlocks.length > 0 ? rpcBlocks[0].height : null;
+  const displayedHead = rpcHead ?? chainHead;
   const indexedHead = Number(blocks[0]?.height || 0);
-  const blockLag = chainHead !== null && indexedHead > 0 ? Math.max(0, chainHead - indexedHead) : null;
+  const blockLag = displayedHead !== null && indexedHead > 0 ? Math.max(0, displayedHead - indexedHead) : null;
+  const liveBlocks = rpcOnline && rpcBlocks.length > 0 ? rpcBlocks : blocks;
+  const usingRpcBlocks = rpcOnline && rpcBlocks.length > 0;
+  const tipFresh = usingRpcBlocks && rpcFetchedAt !== null && Date.now() - rpcFetchedAt < 20_000;
 
   const sortedFundingMarkets = [...liveMarkets].sort(
     (a, b) => Math.abs(Number(b.current_funding_rate || 0)) - Math.abs(Number(a.current_funding_rate || 0))
@@ -156,26 +220,28 @@ export const ExplorerPage: React.FC<{
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-[#46a6ff]">
+          <div className="flex items-center gap-2 text-xs font-mono text-blue-600 dark:text-[#46a6ff]">
             <Blocks className="h-3.5 w-3.5" />
             RISE MAINNET · CHAIN ID {systemConfig?.chain?.chain_id || '4153'}
           </div>
-          <h1 className="mt-1 font-display text-2xl sm:text-3xl font-bold text-[#e8edfb]">
-            RISEx On-Chain Block & Risk Explorer
+          <h1 className="mt-1 font-display text-2xl sm:text-3xl font-bold text-slate-900 dark:text-[#e8edfb]">
+            RISEx On-Chain Block &amp; Risk Explorer
           </h1>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-mono text-slate-400" aria-live="polite">
-            <span className={connectionState === 'connected' ? 'text-[#22e0a1]' : 'text-[#ffb02e]'}>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-mono text-slate-500 dark:text-slate-400" aria-live="polite">
+            <span className={connectionState === 'connected' ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-amber-600 dark:text-[#ffb02e]'}>
               {connectionState === 'connected' ? '● Market trades live via WebSocket' : '○ Market stream reconnecting'}
             </span>
-            {chainHead !== null && <span>· RPC head #{chainHead.toLocaleString()}</span>}
-            {blockLag !== null && <span className={blockLag > 6 ? 'text-[#ffb02e]' : ''}>
-              · Explorer index {blockLag} blocks behind
+            {displayedHead !== null && <span className={tipFresh ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-amber-600 dark:text-[#ffb02e]'}>
+              · {tipFresh ? '● Live RPC' : '○ Last RPC'} block #{displayedHead.toLocaleString()}
+            </span>}
+            {blockLag !== null && <span className="text-slate-500 dark:text-slate-400">
+              · Blockscout {blockLag} indexed blocks behind (separate source)
             </span>}
             {explorerFetchedAt !== null && <span>· Fetched {new Date(explorerFetchedAt).toLocaleTimeString()}</span>}
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1 rounded-xl border border-slate-800 bg-[#090e1a] p-1">
+        <div className="flex flex-wrap items-center gap-1 rounded-xl border border-slate-200 bg-slate-100/90 p-1 dark:border-slate-800 dark:bg-[#090e1a]">
           {(
             [
               { id: 'blocks', label: 'Blocks & Txs', icon: <Blocks className="h-3.5 w-3.5" /> },
@@ -190,7 +256,9 @@ export const ExplorerPage: React.FC<{
               type="button"
               onClick={() => setSubTab(t.id)}
               className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                subTab === t.id ? 'sunrise-gradient-btn font-semibold' : 'text-slate-400 hover:text-[#e8edfb]'
+                subTab === t.id
+                  ? 'sunrise-gradient-btn font-semibold'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-[#e8edfb]'
               }`}
             >
               {t.icon}
@@ -201,141 +269,236 @@ export const ExplorerPage: React.FC<{
       </div>
 
       {/* SUBTAB 1: BLOCKS & TXS */}
-      {subTab === 'blocks' && (
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
-          <div className="sunrise-card rounded-2xl p-4 lg:col-span-5">
-            <h2 className="mb-3 font-display text-base font-bold text-[#e8edfb]">Latest RISE Blocks</h2>
-            {!blocksAvailable && (
-              <div className="mb-2 text-[11px] text-[#ffb02e]">Block explorer is temporarily unavailable; showing the last successful snapshot.</div>
-            )}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs font-mono tabular-nums">
-                <thead className="border-b border-slate-800 text-[11px] uppercase text-slate-400">
-                  <tr>
-                    <th className="py-2 pr-2">Height</th>
-                    <th className="py-2 px-2 text-right">Txs</th>
-                    <th className="py-2 px-2 text-right">Gas Used</th>
-                    <th className="py-2 pl-2 text-right">Time</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {loading && (
-                    <tr>
-                      <td colSpan={4} className="py-8 text-center text-slate-400">
-                        Loading blocks…
-                      </td>
-                    </tr>
-                  )}
-                  {blocks.map((b) => (
-                    <tr key={b.height} className="hover:bg-[#131c31]/50">
-                      <td className="py-2.5 pr-2 font-semibold text-[#46a6ff]">
-                        <a
-                          href={`https://explorer.risechain.com/block/${b.height}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="hover:underline"
-                        >
-                          #{b.height.toLocaleString()}
-                        </a>
-                      </td>
-                      <td className="py-2.5 px-2 text-right text-slate-200">
-                        {b.transactions_count ?? b.tx_count ?? 0}
-                      </td>
-                      <td className="py-2.5 px-2 text-right text-slate-400">
-                        {Number(b.gas_used || 0).toLocaleString()}
-                      </td>
-                      <td className="py-2.5 pl-2 text-right text-slate-400">{formatTimeShort(b.timestamp)}</td>
-                    </tr>
-                  ))}
-                  {!loading && blocks.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="py-8 text-center font-sans text-slate-400">
-                        No recent RISE blocks available.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+      {subTab === 'blocks' && (() => {
+        const blockCount = liveBlocks.length;
+        const avgBlockTxs = blockCount > 0
+          ? liveBlocks.reduce((s, b) => s + Number(b.transactions_count ?? b.tx_count ?? 0), 0) / blockCount
+          : 0;
+        const avgBlockGas = blockCount > 0
+          ? liveBlocks.reduce((s, b) => s + Number(b.gas_used || 0), 0) / blockCount
+          : 0;
+        const okCount = txs.filter((tx) => tx.status === 'ok').length;
+        const methodCounts = new Map<string, number>();
+        for (const tx of txs) {
+          const label = formatExplorerMethod(tx);
+          methodCounts.set(label, (methodCounts.get(label) || 0) + 1);
+        }
+        const topMethods = [...methodCounts.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 6);
 
-          <div className="sunrise-card rounded-2xl p-4 lg:col-span-7">
-            <h2 className="mb-3 font-display text-base font-bold text-[#e8edfb]">
-              Recent RISEx Protocol Transactions
-            </h2>
-            <p className="mb-2 text-[11px] text-slate-400">
-              Transactions touching monitored RISEx contracts; this list can stay unchanged even while new RISE blocks arrive.
-            </p>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs font-mono tabular-nums">
-                <thead className="border-b border-slate-800 text-[11px] uppercase text-slate-400">
-                  <tr>
-                    <th className="py-2 pr-2">Tx Hash</th>
-                    <th className="py-2 px-2">Method</th>
-                    <th className="py-2 px-2">From Wallet</th>
-                    <th className="py-2 px-2">Block</th>
-                    <th className="py-2 pl-2 text-right">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {txs.map((tx) => (
-                    <tr key={tx.hash} className="hover:bg-[#131c31]/50">
-                      <td className="py-2.5 pr-2">
-                        <button
-                          type="button"
-                          onClick={() => inspectHash(tx.hash)}
-                          className="text-[#46a6ff] hover:underline"
-                        >
-                          {shortAddress(tx.hash, 8, 6)}
-                        </button>
-                      </td>
-                      <td className="py-2.5 px-2 text-[#ffb02e]">{tx.method || 'call'}</td>
-                      <td className="py-2.5 px-2">
-                        <button
-                          type="button"
-                          onClick={() => tx.from?.hash && onSelectWallet(tx.from.hash)}
-                          className="text-slate-300 hover:text-[#ffb02e]"
-                        >
-                          {shortAddress(tx.from?.hash || '')}
-                        </button>
-                      </td>
-                      <td className="py-2.5 px-2 text-slate-400">#{tx.block_number}</td>
-                      <td className="py-2.5 pl-2 text-right">
-                        <span
-                          className={`rounded px-1.5 py-0.5 text-[10px] ${
-                            tx.status === 'ok'
-                              ? 'bg-[#22e0a1]/15 text-[#22e0a1]'
-                              : 'bg-[#ff4d6d]/15 text-[#ff4d6d]'
-                          }`}
-                        >
-                          {tx.status?.toUpperCase() || 'OK'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                  {!loading && txs.length === 0 && (
+        return (
+          <div className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-12">
+            <div className="flex flex-col gap-4 lg:col-span-5">
+              <div className="sunrise-card flex flex-1 flex-col rounded-2xl p-4">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div>
+                    <h2 className="font-display text-base font-bold text-slate-900 dark:text-[#e8edfb]">
+                      Latest RISE Blocks · {usingRpcBlocks ? 'RPC live' : 'Indexed fallback'}
+                    </h2>
+                    <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                      Chain tip refreshed every ~2s ({liveBlocks.length} blocks)
+                    </p>
+                  </div>
+                  <div className="text-right font-mono text-[10px] text-slate-500 dark:text-slate-400">
+                    <div>Avg {avgBlockTxs.toFixed(1)} txs/blk</div>
+                    <div>{(avgBlockGas / 1e6).toFixed(1)}M gas/blk</div>
+                  </div>
+                </div>
+                {!blocksAvailable && (
+                  <div className="mb-2 text-[11px] text-amber-600 dark:text-[#ffb02e]">Block explorer is temporarily unavailable; showing the last successful snapshot.</div>
+                )}
+                <div className="min-h-0 flex-1 max-h-[460px] overflow-x-auto overflow-y-auto">
+                  <table className="w-full text-left text-xs font-mono tabular-nums">
+                    <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-[11px] uppercase text-slate-500 dark:border-slate-800 dark:bg-[#080d18] dark:text-slate-400">
+                      <tr>
+                        <th className="py-2 pr-2">Height</th>
+                        <th className="py-2 px-2 text-right">Txs</th>
+                        <th className="py-2 px-2 text-right">Gas Used</th>
+                        <th className="py-2 pl-2 text-right">Time</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60">
+                      {loading && (
+                        <tr>
+                          <td colSpan={4} className="py-8 text-center text-slate-500 dark:text-slate-400">
+                            Loading blocks…
+                          </td>
+                        </tr>
+                      )}
+                      {liveBlocks.map((b) => (
+                        <tr key={b.height} className="hover:bg-slate-50 dark:hover:bg-[#131c31]/50">
+                          <td className="py-2 pr-2 font-semibold text-blue-600 dark:text-[#46a6ff]">
+                            <a
+                              href={`https://explorer.risechain.com/block/${b.height}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="hover:underline"
+                            >
+                              #{b.height.toLocaleString()}
+                            </a>
+                          </td>
+                          <td className="py-2 px-2 text-right text-slate-800 dark:text-slate-200">
+                            {b.transactions_count ?? b.tx_count ?? 0}
+                          </td>
+                          <td className="py-2 px-2 text-right text-slate-500 dark:text-slate-400">
+                            {Number(b.gas_used || 0).toLocaleString()}
+                          </td>
+                          <td className="py-2 pl-2 text-right text-slate-500 dark:text-slate-400">{formatTimeShort(b.timestamp)}</td>
+                        </tr>
+                      ))}
+                      {!loading && liveBlocks.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="py-8 text-center font-sans text-slate-500 dark:text-slate-400">
+                            No recent RISE blocks available.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Protocol Contract & Method Telemetry filling left column cleanly */}
+              <div className="sunrise-card rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-display text-sm font-bold text-slate-900 dark:text-[#e8edfb]">
+                    Protocol Method Activity
+                  </h3>
+                  <span className="font-mono text-[11px] text-emerald-600 dark:text-[#22e0a1]">
+                    {txs.length > 0 ? `${okCount}/${txs.length} OK` : '—'}
+                  </span>
+                </div>
+                {topMethods.length > 0 ? (
+                  <div className="space-y-2">
+                    {topMethods.map(([method, count]) => {
+                      const pct = txs.length > 0 ? (count / txs.length) * 100 : 0;
+                      return (
+                        <div key={method} className="space-y-1">
+                          <div className="flex items-center justify-between font-mono text-[11px]">
+                            <span className="text-amber-600 dark:text-[#ffb02e] truncate max-w-[200px]">{method}</span>
+                            <span className="text-slate-700 dark:text-slate-300 tabular-nums">
+                              {count} txs · {pct.toFixed(0)}%
+                            </span>
+                          </div>
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-amber-500 to-emerald-500 dark:from-[#ffb02e] dark:to-[#22e0a1]"
+                              style={{ width: `${Math.max(4, pct)}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-xs text-slate-500">Waiting for indexed transactions…</div>
+                )}
+
+                {systemConfig?.addresses && (
+                  <div className="border-t border-slate-200/80 pt-2.5 grid grid-cols-2 gap-1.5 font-mono text-[10px] dark:border-slate-800/80">
+                    {Object.entries(systemConfig.addresses).slice(0, 4).map(([name, addr]) => (
+                      <a
+                        key={name}
+                        href={`https://explorer.risechain.com/address/${addr}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-slate-600 hover:border-blue-500/60 hover:text-blue-600 dark:border-slate-800/80 dark:bg-[#090e1a] dark:text-slate-400 dark:hover:border-[#46a6ff]/50 dark:hover:text-[#46a6ff]"
+                      >
+                        <span className="truncate">{name}</span>
+                        <span>{shortAddress(addr, 4, 4)}</span>
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="sunrise-card flex h-full flex-col rounded-2xl p-4 lg:col-span-7">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <div>
+                  <h2 className="font-display text-base font-bold text-slate-900 dark:text-[#e8edfb]">
+                    Recent RISEx Protocol Transactions
+                  </h2>
+                  <p className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
+                    Indexed transactions touching RISEx Perps, Orders &amp; Router contracts
+                  </p>
+                </div>
+                <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
+                  {txs.length} indexed
+                </span>
+              </div>
+              <div className="min-h-0 flex-1 max-h-[720px] overflow-x-auto overflow-y-auto">
+                <table className="w-full text-left text-xs font-mono tabular-nums">
+                  <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-[11px] uppercase text-slate-500 dark:border-slate-800 dark:bg-[#080d18] dark:text-slate-400">
                     <tr>
-                      <td colSpan={5} className="py-8 text-center font-sans text-slate-400">
-                        No recent protocol transactions found.
-                      </td>
+                      <th className="py-2 pr-2">Tx Hash</th>
+                      <th className="py-2 px-2">Method</th>
+                      <th className="py-2 px-2">From Wallet</th>
+                      <th className="py-2 px-2">Block</th>
+                      <th className="py-2 pl-2 text-right">Status</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60">
+                    {txs.map((tx) => (
+                      <tr key={tx.hash} className="hover:bg-slate-50 dark:hover:bg-[#131c31]/50">
+                        <td className="py-2 pr-2">
+                          <button
+                            type="button"
+                            onClick={() => inspectHash(tx.hash)}
+                            className="text-blue-600 hover:underline dark:text-[#46a6ff]"
+                          >
+                            {shortAddress(tx.hash, 8, 6)}
+                          </button>
+                        </td>
+                        <td className="py-2 px-2 text-amber-600 dark:text-[#ffb02e] whitespace-nowrap">{formatExplorerMethod(tx)}</td>
+                        <td className="py-2 px-2">
+                          <button
+                            type="button"
+                            onClick={() => tx.from?.hash && onSelectWallet(tx.from.hash)}
+                            className="text-slate-700 hover:text-amber-600 dark:text-slate-300 dark:hover:text-[#ffb02e]"
+                          >
+                            {shortAddress(tx.from?.hash || '')}
+                          </button>
+                        </td>
+                        <td className="py-2 px-2 text-slate-500 dark:text-slate-400">#{tx.block_number}</td>
+                        <td className="py-2 pl-2 text-right">
+                          <span
+                            className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                              tx.status === 'ok'
+                                ? 'bg-emerald-500/12 text-emerald-700 dark:bg-[#22e0a1]/15 dark:text-[#22e0a1]'
+                                : 'bg-rose-500/12 text-rose-700 dark:bg-[#ff4d6d]/15 dark:text-[#ff4d6d]'
+                            }`}
+                          >
+                            {tx.status?.toUpperCase() || 'OK'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                    {!loading && txs.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="py-8 text-center font-sans text-slate-500 dark:text-slate-400">
+                          No recent protocol transactions found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* SUBTAB 2: LIVE TRADES */}
       {subTab === 'trades' && (
         <div className="sunrise-card overflow-hidden rounded-2xl p-4">
-          <h2 className="mb-3 font-display text-base font-bold text-[#e8edfb]">
+          <h2 className="mb-3 font-display text-base font-bold text-slate-900 dark:text-[#e8edfb]">
             Global RISEx Trade Tape ({tradeTape.length})
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-mono tabular-nums">
-              <thead className="border-b border-slate-800 text-[11px] uppercase text-slate-400">
+              <thead className="border-b border-slate-200 text-[11px] uppercase text-slate-500 dark:border-slate-800 dark:text-slate-400">
                 <tr>
                   <th className="py-2 pr-2">Time</th>
                   <th className="py-2 px-2">Market</th>
@@ -346,7 +509,7 @@ export const ExplorerPage: React.FC<{
                   <th className="py-2 pl-2 text-right">Block</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60">
                 {tradeTape.map((tr, i) => {
                   const isBuy = tr.maker_side?.toLowerCase().includes('buy') || tr.maker_side === '0';
                   const usd = Number(tr.price) * Number(tr.size);
@@ -354,25 +517,25 @@ export const ExplorerPage: React.FC<{
                     <tr
                       key={`${tr.id}-${i}`}
                       onClick={() => tr.market_id && onSelectMarket(String(tr.market_id))}
-                      className="cursor-pointer hover:bg-[#131c31]/60"
+                      className="cursor-pointer hover:bg-slate-50 dark:hover:bg-[#131c31]/60"
                     >
-                      <td className="py-2 pr-2 text-slate-400">{formatTimeShort(tr.time)}</td>
-                      <td className="py-2 px-2 font-sans font-semibold text-[#e8edfb]">
+                      <td className="py-2 pr-2 text-slate-500 dark:text-slate-400">{formatTimeShort(tr.time)}</td>
+                      <td className="py-2 px-2 font-sans font-semibold text-slate-900 dark:text-[#e8edfb]">
                         {tr.market_name || `MKT-${tr.market_id}`}
                       </td>
-                      <td className={`py-2 px-2 font-semibold ${isBuy ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'}`}>
+                      <td className={`py-2 px-2 font-semibold ${isBuy ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'}`}>
                         {isBuy ? 'BUY' : 'SELL'}
                       </td>
-                      <td className="py-2 px-2 text-right text-slate-200">{formatPrice(tr.price)}</td>
-                      <td className="py-2 px-2 text-right text-slate-300">{formatNumber(tr.size, 4)}</td>
-                      <td className="py-2 px-2 text-right text-[#ffb02e]">{formatUsd(usd, true)}</td>
+                      <td className="py-2 px-2 text-right text-slate-800 dark:text-slate-200">{formatPrice(tr.price)}</td>
+                      <td className="py-2 px-2 text-right text-slate-700 dark:text-slate-300">{formatNumber(tr.size, 4)}</td>
+                      <td className="py-2 px-2 text-right text-amber-600 dark:text-[#ffb02e]">{formatUsd(usd, true)}</td>
                       <td className="py-2 pl-2 text-right text-slate-500">#{tr.block_number || '—'}</td>
                     </tr>
                   );
                 })}
                 {!loading && tradeTape.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="py-10 text-center font-sans text-slate-400">
+                    <td colSpan={7} className="py-10 text-center font-sans text-slate-500 dark:text-slate-400">
                       No recent trades available right now.
                     </td>
                   </tr>
@@ -387,16 +550,16 @@ export const ExplorerPage: React.FC<{
       {subTab === 'liquidations' && (
         <div className="sunrise-card overflow-hidden rounded-2xl p-4">
           <div className="mb-3">
-            <h2 className="font-display text-base font-bold text-[#e8edfb]">
+            <h2 className="font-display text-base font-bold text-slate-900 dark:text-[#e8edfb]">
               Positions Near Liquidation (&lt;5% Distance)
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Uses live oracle mark prices, with cached indexed positions. Strictly less than 5% distance; account positions may lag the underlying indexer.
             </p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-slate-800 text-[11px] uppercase text-slate-400">
+              <thead className="border-b border-slate-200 text-[11px] uppercase text-slate-500 dark:border-slate-800 dark:text-slate-400">
                 <tr>
                   <th className="py-2 pr-2">Trader</th>
                   <th className="py-2 px-2">Market</th>
@@ -408,50 +571,60 @@ export const ExplorerPage: React.FC<{
                   <th className="py-2 pl-2 text-right">Unrealized PnL</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 tabular-nums">
-                {atRisk.map((p, i) => (
-                  <tr
-                    key={`${p.address}-${p.marketId}-${i}`}
-                    onClick={() => onSelectWallet(p.address)}
-                    className="cursor-pointer hover:bg-[#131c31]/60"
-                  >
-                    <td className="py-2.5 pr-2">
-                      <div className="flex items-center gap-2">
-                        <TraderAvatar address={p.address} avatarUrl={p.avatarUrl} username={p.username} size={24} />
-                        <div>
-                          <div className="font-semibold text-[#e8edfb]">{p.username || shortAddress(p.address)}</div>
-                          <div className="font-mono text-[10px] text-slate-500">{shortAddress(p.address)}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectMarket(p.marketId);
-                      }}
-                      className="py-2.5 px-2 font-semibold text-[#ffb02e] hover:underline"
+              <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 tabular-nums">
+                {atRisk.map((p, i) => {
+                  const info = formatTraderDisplay(p.address, p.username);
+                  return (
+                    <tr
+                      key={`${p.address}-${p.marketId}-${i}`}
+                      onClick={() => onSelectWallet(p.address)}
+                      className="cursor-pointer hover:bg-slate-50 dark:hover:bg-[#131c31]/60"
                     >
-                      {p.marketName}
-                    </td>
-                    <td className="py-2.5 px-2 font-mono">
-                      <span className={p.side === 'LONG' ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'}>
-                        {p.side} {p.leverage.toFixed(1)}x
-                      </span>
-                    </td>
-                    <td className="py-2.5 px-2 text-right font-mono text-slate-200">{formatUsd(p.notionalUsd, true)}</td>
-                    <td className="py-2.5 px-2 text-right font-mono text-slate-300">{formatPrice(p.markPrice)}</td>
-                    <td className="py-2.5 px-2 text-right font-mono text-[#ff4d6d]">{formatPrice(p.liquidationPrice)}</td>
-                    <td className="py-2.5 px-2 text-right">
-                      <LiqDistanceBadge markPrice={p.markPrice} liquidationPrice={p.liquidationPrice} side={p.side} />
-                    </td>
-                    <td className={`py-2.5 pl-2 text-right font-mono ${p.unrealizedPnl >= 0 ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'}`}>
-                      {formatSignedUsd(p.unrealizedPnl, true)}
-                    </td>
-                  </tr>
-                ))}
+                      <td className="py-2.5 pr-2">
+                        <div className="flex items-center gap-2">
+                          <TraderAvatar address={p.address} avatarUrl={p.avatarUrl} username={info.displayName} size={24} />
+                          <div>
+                            <div className="flex items-center gap-1.5 font-semibold text-slate-900 dark:text-[#e8edfb]">
+                              <span>{info.displayName}</span>
+                              {info.badgeLabel && (
+                                <span className="text-[10px] font-mono text-violet-600 dark:text-[#8b7bff]">
+                                  · {info.badgeLabel}
+                                </span>
+                              )}
+                            </div>
+                            <div className="font-mono text-[10px] text-slate-500">{shortAddress(p.address)}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onSelectMarket(p.marketId);
+                        }}
+                        className="py-2.5 px-2 font-semibold text-amber-600 hover:underline dark:text-[#ffb02e]"
+                      >
+                        {p.marketName}
+                      </td>
+                      <td className="py-2.5 px-2 font-mono">
+                        <span className={p.side === 'LONG' ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'}>
+                          {p.side} {p.leverage.toFixed(1)}x
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-2 text-right font-mono text-slate-800 dark:text-slate-200">{formatUsd(p.notionalUsd, true)}</td>
+                      <td className="py-2.5 px-2 text-right font-mono text-slate-700 dark:text-slate-300">{formatPrice(p.markPrice)}</td>
+                      <td className="py-2.5 px-2 text-right font-mono text-rose-600 dark:text-[#ff4d6d]">{formatPrice(p.liquidationPrice)}</td>
+                      <td className="py-2.5 px-2 text-right">
+                        <LiqDistanceBadge markPrice={p.markPrice} liquidationPrice={p.liquidationPrice} side={p.side} />
+                      </td>
+                      <td className={`py-2.5 pl-2 text-right font-mono ${p.unrealizedPnl >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'}`}>
+                        {formatSignedUsd(p.unrealizedPnl, true)}
+                      </td>
+                    </tr>
+                  );
+                })}
                 {atRisk.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="py-10 text-center text-slate-400">
+                    <td colSpan={8} className="py-10 text-center text-slate-500 dark:text-slate-400">
                       No indexed open positions currently within 5% of liquidation.
                     </td>
                   </tr>
@@ -466,14 +639,14 @@ export const ExplorerPage: React.FC<{
       {subTab === 'funding' && (
         <div className="sunrise-card overflow-hidden rounded-2xl p-4">
           <div className="mb-3 flex items-center gap-2">
-            <Percent className="h-4 w-4 text-[#ffb02e]" />
-            <h2 className="font-display text-base font-bold text-[#e8edfb]">
-              Live Funding Rates & Annualized Yield ({sortedFundingMarkets.length} Markets)
+            <Percent className="h-4 w-4 text-amber-600 dark:text-[#ffb02e]" />
+            <h2 className="font-display text-base font-bold text-slate-900 dark:text-[#e8edfb]">
+              Live Funding Rates &amp; Annualized Yield ({sortedFundingMarkets.length} Markets)
             </h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-mono tabular-nums">
-              <thead className="border-b border-slate-800 text-[11px] uppercase text-slate-400">
+              <thead className="border-b border-slate-200 text-[11px] uppercase text-slate-500 dark:border-slate-800 dark:text-slate-400">
                 <tr>
                   <th className="py-2 pr-2">Market</th>
                   <th className="py-2 px-2 text-right">1h Funding</th>
@@ -483,7 +656,7 @@ export const ExplorerPage: React.FC<{
                   <th className="py-2 pl-2 text-right">24h Volume</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60">
                 {sortedFundingMarkets.map((m) => {
                   const r1 = Number(m.current_funding_rate || 0) * 100;
                   const r8 = r1 * 8;
@@ -493,30 +666,30 @@ export const ExplorerPage: React.FC<{
                     <tr
                       key={m.market_id}
                       onClick={() => onSelectMarket(String(m.market_id))}
-                      className="cursor-pointer hover:bg-[#131c31]/60"
+                      className="cursor-pointer hover:bg-slate-50 dark:hover:bg-[#131c31]/60"
                     >
                       <td className="py-2.5 pr-2 font-sans">
                         <div className="flex items-center gap-2">
                           <TokenBadge symbol={m.base_asset_symbol} size={20} />
-                          <span className="font-semibold text-[#e8edfb]">{m.display_name}</span>
+                          <span className="font-semibold text-slate-900 dark:text-[#e8edfb]">{m.display_name}</span>
                         </div>
                       </td>
-                      <td className={`py-2.5 px-2 text-right font-semibold ${r1 >= 0 ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'}`}>
+                      <td className={`py-2.5 px-2 text-right font-semibold ${r1 >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'}`}>
                         {r1 >= 0 ? '+' : ''}
                         {r1.toFixed(4)}%
                       </td>
-                      <td className={`py-2.5 px-2 text-right ${r8 >= 0 ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'}`}>
+                      <td className={`py-2.5 px-2 text-right ${r8 >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'}`}>
                         {r8 >= 0 ? '+' : ''}
                         {r8.toFixed(4)}%
                       </td>
-                      <td className={`py-2.5 px-2 text-right font-semibold ${apr >= 0 ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'}`}>
+                      <td className={`py-2.5 px-2 text-right font-semibold ${apr >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'}`}>
                         {apr >= 0 ? '+' : ''}
                         {apr.toFixed(1)}%
                       </td>
-                      <td className="py-2.5 px-2 text-right text-[#ffb02e]">
+                      <td className="py-2.5 px-2 text-right text-amber-600 dark:text-[#ffb02e]">
                         {formatUsd(Number(m.open_interest || 0) * mark, true)}
                       </td>
-                      <td className="py-2.5 pl-2 text-right text-slate-300">
+                      <td className="py-2.5 pl-2 text-right text-slate-700 dark:text-slate-300">
                         {formatUsd(m.quote_volume_24h, true)}
                       </td>
                     </tr>
@@ -524,7 +697,7 @@ export const ExplorerPage: React.FC<{
                 })}
                 {!loading && sortedFundingMarkets.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="py-10 text-center font-sans text-slate-400">
+                    <td colSpan={6} className="py-10 text-center font-sans text-slate-500 dark:text-slate-400">
                       No market funding rates available right now.
                     </td>
                   </tr>
@@ -539,8 +712,8 @@ export const ExplorerPage: React.FC<{
       {subTab === 'decoder' && (
         <div className="space-y-5">
           <div className="sunrise-card rounded-2xl p-4 space-y-4">
-            <h2 className="font-display text-base font-bold text-[#e8edfb]">
-              RISEx Transaction & Revert Decoder
+            <h2 className="font-display text-base font-bold text-slate-900 dark:text-[#e8edfb]">
+              RISEx Transaction &amp; Revert Decoder
             </h2>
             <form
               onSubmit={(e) => {
@@ -556,7 +729,7 @@ export const ExplorerPage: React.FC<{
                   value={txInput}
                   onChange={(e) => setTxInput(e.target.value)}
                   placeholder="Paste 0x transaction hash (64 hex chars)…"
-                  className="w-full rounded-xl border border-slate-700/60 bg-[#090e1a] py-2 pl-9 pr-3 text-xs font-mono text-[#e8edfb] placeholder:text-slate-500 focus:border-[#ffb02e] focus:outline-none"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-xs font-mono text-slate-900 placeholder:text-slate-400 focus:border-amber-500 focus:bg-white focus:outline-none dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-[#e8edfb] dark:placeholder:text-slate-500 dark:focus:border-[#ffb02e]"
                 />
               </div>
               <button type="submit" className="sunrise-gradient-btn rounded-xl px-5 py-2 text-xs font-semibold">
@@ -565,59 +738,59 @@ export const ExplorerPage: React.FC<{
             </form>
 
             {txLoading && (
-              <div className="flex items-center gap-2 text-xs text-[#ffb02e]">
-                <Loader2 className="h-4 w-4 animate-spin" /> Fetching RISEx & Blockscout trace…
+              <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-[#ffb02e]">
+                <Loader2 className="h-4 w-4 animate-spin" /> Fetching RISEx &amp; Blockscout trace…
               </div>
             )}
 
             {txResult && !txLoading && (
-              <div className="rounded-xl border border-slate-800 bg-[#090e1a] p-4 space-y-3 text-xs font-mono">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-4 space-y-3 text-xs font-mono dark:border-slate-800 dark:bg-[#090e1a]">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-slate-300 break-all">Tx: {txResult.hash || txInput}</span>
+                  <span className="text-slate-700 dark:text-slate-300 break-all">Tx: {txResult.hash || txInput}</span>
                   <a
                     href={`https://explorer.risechain.com/tx/${txResult.hash || txInput}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-[#46a6ff] hover:underline"
+                    className="inline-flex items-center gap-1 text-blue-600 hover:underline dark:text-[#46a6ff]"
                   >
                     Open in Blockscout <ExternalLink className="h-3 w-3" />
                   </a>
                 </div>
 
                 {txResult.error && (
-                  <div className="rounded-lg border border-[#ff4d6d]/40 bg-[#ff4d6d]/10 px-3 py-2 text-[#ff4d6d]">
+                  <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-rose-700 dark:border-[#ff4d6d]/40 dark:bg-[#ff4d6d]/10 dark:text-[#ff4d6d]">
                     {txResult.error}
                   </div>
                 )}
 
                 {txResult.explorerTx && (
                   <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-                    <div className="rounded-lg border border-slate-800/80 bg-[#05070d] p-2.5">
+                    <div className="rounded-lg border border-slate-200 bg-white p-2.5 dark:border-slate-800/80 dark:bg-[#05070d]">
                       <div className="text-[10px] uppercase text-slate-500">Status</div>
-                      <div className={`mt-0.5 font-semibold ${txResult.explorerTx.status === 'ok' ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'}`}>
+                      <div className={`mt-0.5 font-semibold ${txResult.explorerTx.status === 'ok' ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'}`}>
                         {String(txResult.explorerTx.status || 'UNKNOWN').toUpperCase()}
                       </div>
                     </div>
-                    <div className="rounded-lg border border-slate-800/80 bg-[#05070d] p-2.5">
+                    <div className="rounded-lg border border-slate-200 bg-white p-2.5 dark:border-slate-800/80 dark:bg-[#05070d]">
                       <div className="text-[10px] uppercase text-slate-500">Block</div>
-                      <div className="mt-0.5 text-slate-200">
+                      <div className="mt-0.5 text-slate-800 dark:text-slate-200">
                         {txResult.explorerTx.block_number ? `#${Number(txResult.explorerTx.block_number).toLocaleString()}` : '—'}
                       </div>
                     </div>
-                    <div className="rounded-lg border border-slate-800/80 bg-[#05070d] p-2.5">
+                    <div className="rounded-lg border border-slate-200 bg-white p-2.5 dark:border-slate-800/80 dark:bg-[#05070d]">
                       <div className="text-[10px] uppercase text-slate-500">Method</div>
-                      <div className="mt-0.5 text-[#ffb02e] truncate">
+                      <div className="mt-0.5 text-amber-600 dark:text-[#ffb02e] truncate">
                         {txResult.explorerTx.method || txResult.decoded?.action || 'call'}
                       </div>
                     </div>
-                    <div className="rounded-lg border border-slate-800/80 bg-[#05070d] p-2.5">
+                    <div className="rounded-lg border border-slate-200 bg-white p-2.5 dark:border-slate-800/80 dark:bg-[#05070d]">
                       <div className="text-[10px] uppercase text-slate-500">From</div>
                       <div className="mt-0.5">
                         {txResult.explorerTx.from?.hash ? (
                           <button
                             type="button"
                             onClick={() => onSelectWallet(txResult.explorerTx.from.hash)}
-                            className="text-[#46a6ff] hover:underline"
+                            className="text-blue-600 hover:underline dark:text-[#46a6ff]"
                           >
                             {shortAddress(txResult.explorerTx.from.hash, 8, 6)}
                           </button>
@@ -629,7 +802,7 @@ export const ExplorerPage: React.FC<{
                   </div>
                 )}
 
-                <pre className="max-h-72 overflow-auto rounded-lg bg-[#05070d] p-3 text-[11px] text-slate-300">
+                <pre className="max-h-72 overflow-auto rounded-lg border border-slate-200 bg-white p-3 text-[11px] text-slate-800 dark:border-slate-800 dark:bg-[#05070d] dark:text-slate-300">
                   {JSON.stringify(txResult, null, 2)}
                 </pre>
               </div>
@@ -638,22 +811,22 @@ export const ExplorerPage: React.FC<{
 
           {systemConfig?.addresses && (
             <div className="sunrise-card rounded-2xl p-4">
-              <h3 className="mb-3 font-display text-sm font-bold text-[#e8edfb]">
+              <h3 className="mb-3 font-display text-sm font-bold text-slate-900 dark:text-[#e8edfb]">
                 RISEx Mainnet Contract Registry
               </h3>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {Object.entries(systemConfig.addresses).map(([name, addr]) => (
                   <div
                     key={name}
-                    className="flex items-center justify-between rounded-xl border border-slate-800/80 bg-[#090e1a] px-3 py-2 text-xs font-mono"
+                    className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-mono dark:border-slate-800/80 dark:bg-[#090e1a]"
                   >
-                    <span className="text-slate-400">{name}</span>
+                    <span className="text-slate-600 dark:text-slate-400">{name}</span>
                     <div className="flex items-center gap-1.5">
                       <a
                         href={`https://explorer.risechain.com/address/${addr}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-[#46a6ff] hover:underline"
+                        className="text-blue-600 hover:underline dark:text-[#46a6ff]"
                       >
                         {shortAddress(addr, 8, 6)}
                       </a>

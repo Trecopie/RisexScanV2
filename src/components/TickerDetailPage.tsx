@@ -34,7 +34,10 @@ import { TradingViewChart } from './TradingViewChart';
 import { LiquidityDepthHeatmap } from './LiquidityDepthHeatmap';
 import { useMarketStream } from '../context/MarketWebSocketContext';
 import { parseWsMarketMessage, updateOrderbookAndGetMid, type OrderbookCache } from '../utils/marketWsPatch';
+import { applyRawBookFrame, emptyRawBook, rawBookIntegrityOk, readRawOrderbookFrame } from '../utils/orderbookIntegrity';
+import { mergeExplorerTradeTape } from '../utils/explorerLive';
 import { calcLiqDistancePct, LiqDistanceBadge, TokenBadge, TraderAvatar } from './TraderAvatar';
+import { formatTraderDisplay, matchesTraderQuery } from '../utils/traderDisplay';
 
 interface TickerAnalyticsResponse {
   market: RisexMarket;
@@ -65,8 +68,17 @@ export const TickerDetailPage: React.FC<{
   const { markets: streamedMarkets } = useMarketStream();
   const [analytics, setAnalytics] = useState<TickerAnalyticsResponse | null>(null);
   const [allMarkets, setAllMarkets] = useState<RisexMarket[]>([]);
-  const [candles, setCandles] = useState<MarketCandle[]>([]);
+  // Keep data attached to the market/resolution it actually belongs to.
+  // Changing timeframes must never briefly render 1H bars as 1m candles.
+  const [candleState,setCandleState] = useState<{marketId:string;resolution:string;rows:MarketCandle[];restRevision:number}>({
+    marketId:'',resolution:'',rows:[],restRevision:0,
+  });
   const [resolution, setResolution] = useState('1H');
+  const [candleSyncNonce,setCandleSyncNonce] = useState(0);
+  const candles = candleState.marketId === marketId && candleState.resolution === resolution
+    ? candleState.rows : [];
+  const resolutionRef = React.useRef(resolution);
+  resolutionRef.current = resolution;
   const [orderbook, setOrderbook] = useState<{ bids: OrderbookLevel[]; asks: OrderbookLevel[] }>({
     bids: [],
     asks: [],
@@ -75,6 +87,12 @@ export const TickerDetailPage: React.FC<{
   const [fundingHistory, setFundingHistory] = useState<FundingRateRecord[]>([]);
   const [bookTab, setBookTab] = useState<'book' | 'trades'>('book');
   const [bookIsLive, setBookIsLive] = useState(false);
+  const [bookChecksumVerified,setBookChecksumVerified] = useState(false);
+  const [bookResyncs, setBookResyncs] = useState(0);
+  const [bookUpdatedAt, setBookUpdatedAt] = useState<number | null>(null);
+  const [lastTradeReceivedAt, setLastTradeReceivedAt] = useState<number | null>(null);
+  const [tradeSocketConnected,setTradeSocketConnected] = useState(false);
+  const [depthRows, setDepthRows] = useState(10);
   const bookLiveRef = React.useRef(false);
   const [loading, setLoading] = useState(true);
 
@@ -117,7 +135,9 @@ export const TickerDetailPage: React.FC<{
       if (obRes.status === 'fulfilled' && obRes.value && !obRes.value.error && !bookLiveRef.current) {
         setOrderbook({ bids: obRes.value.bids || [], asks: obRes.value.asks || [] });
       }
-      if (trRes.status === 'fulfilled' && trRes.value?.trades) setTrades(trRes.value.trades);
+      if (trRes.status === 'fulfilled' && trRes.value?.trades) {
+        setTrades((existing) => mergeExplorerTradeTape(existing, trRes.value.trades, 80));
+      }
       if (fnRes.status === 'fulfilled' && fnRes.value?.records) setFundingHistory(fnRes.value.records);
     } catch {
       // ignore
@@ -133,7 +153,38 @@ export const TickerDetailPage: React.FC<{
     fetch(`/api/markets/${marketId}/candles?resolution=${resolution}`, { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
-        if (!controller.signal.aborted && d?.candles) setCandles(d.candles);
+        if (!controller.signal.aborted && Array.isArray(d?.candles)) {
+          setCandleState((previous) => {
+            // Periodic REST reconciliation repairs missed WS candles, but a
+            // newer live last execution must not be overwritten by an older
+            // REST snapshot assembled before that trade arrived.
+            if (previous.marketId !== marketId || previous.resolution !== resolution || !previous.rows.length) {
+              return {marketId,resolution,rows:d.candles,restRevision:previous.restRevision+1};
+            }
+            const rest=normalizeCandles(d.candles);
+            const live=normalizeCandles(previous.rows);
+            if (!rest.length)return previous;
+            const lastRestTime=rest[rest.length-1].time;
+            const latestRest=rest[rest.length-1];
+            const laterLive=live.filter(bar=>bar.time>=lastRestTime);
+            const merged=[...rest.filter(bar=>bar.time<lastRestTime)];
+            const sameLive=laterLive.find(bar=>bar.time===lastRestTime);
+            if(sameLive){
+              merged.push({
+                ...latestRest,
+                high:Math.max(latestRest.high,sameLive.high),
+                low:Math.min(latestRest.low,sameLive.low),
+                close:sameLive.close,
+                volume:Math.max(latestRest.volume,sameLive.volume),
+              });
+            }else merged.push(latestRest);
+            merged.push(...laterLive.filter(bar=>bar.time>lastRestTime));
+            return {marketId,resolution,restRevision:previous.restRevision+1,rows:merged.map(bar=>({
+              time:bar.time*1000,open:bar.open,high:bar.high,
+              low:bar.low,close:bar.close,volume:bar.volume,
+            }))};
+          });
+        }
       })
       .catch(() => {});
   };
@@ -153,8 +204,17 @@ export const TickerDetailPage: React.FC<{
 
   useEffect(() => {
     loadCandles();
-    return () => candleAbortRef.current?.abort();
-  }, [marketId, resolution]);
+    // A periodic authoritative candle reconciliation repairs missed executions
+    // during WS disconnects or RISEx feed catch-up, without relying on polling
+    // as the primary live chart source.
+    const timer=setInterval(()=>{
+      if(document.visibilityState==='visible')loadCandles();
+    },20000);
+    return () => {
+      candleAbortRef.current?.abort();
+      clearInterval(timer);
+    };
+  }, [marketId, resolution, candleSyncNonce]);
 
   // Live WS trades and L2 depth for only the selected ticker.
   // Coalesce orderbook deltas so they don't rerender the full ticker on every level.
@@ -164,10 +224,15 @@ export const TickerDetailPage: React.FC<{
     let bookUpdateTimer: ReturnType<typeof setTimeout> | null = null;
     let attempt = 0;
     let disposed = false;
+    let hadConnected = false;
     const bookCache: OrderbookCache = new Map();
+    const rawBook = emptyRawBook();
     let receivedBookSnapshot = false;
+    const observedTradeIds = new Set<string>();
     bookLiveRef.current = false;
     setBookIsLive(false);
+    setBookChecksumVerified(false);
+    setTradeSocketConnected(false);
 
     const flushBook = () => {
       bookUpdateTimer = null;
@@ -181,6 +246,7 @@ export const TickerDetailPage: React.FC<{
       bookLiveRef.current = true;
       setBookIsLive(true);
       setOrderbook({ bids, asks });
+      setBookUpdatedAt(Date.now());
     };
 
     const connect = () => {
@@ -190,6 +256,12 @@ export const TickerDetailPage: React.FC<{
         const socket = new WebSocket('wss://ws.rise.trade/ws');
         ws = socket;
         socket.onopen = () => {
+          if (disposed || ws !== socket) return;
+          setTradeSocketConnected(true);
+          // A reconnection can miss executions. Repair earlier OHLCV buckets
+          // with REST immediately instead of awaiting the next reconciliation.
+          if (hadConnected) setCandleSyncNonce(n=>n+1);
+          hadConnected = true;
           attempt = 0;
           socket.send(JSON.stringify({method:'subscribe',params:{channel:'trades',market_ids:[Number(marketId)]}}));
           socket.send(JSON.stringify({method:'subscribe',params:{channel:'orderbook',market_ids:[Number(marketId)]}}));
@@ -200,28 +272,61 @@ export const TickerDetailPage: React.FC<{
             // Share the same validated RISEx WS decoder as the market-wide feed.
             // RISEx sends market ID, block and timestamp in the message envelope,
             // not necessarily inside its trade data object.
-            const frames = parseWsMarketMessage(JSON.parse(String(ev.data)));
+            const message = JSON.parse(String(ev.data));
+            const frames = parseWsMarketMessage(message);
+            const exactBookFrame = readRawOrderbookFrame(message);
             for (const frame of frames) {
               if (frame.kind !== 'orderbook' || frame.marketId !== String(marketId)) continue;
               // A delta without a full initial book cannot be displayed as a
               // complete L2 snapshot, even if it updates both sides.
               if (!receivedBookSnapshot && !frame.isSnapshot) continue;
-              if (frame.isSnapshot) receivedBookSnapshot = true;
+              if (frame.isSnapshot) {
+                receivedBookSnapshot = true;
+                setBookChecksumVerified(false);
+              }
+              // Validate raw wei strings, not rounded JavaScript number price keys.
+              if (!exactBookFrame || exactBookFrame.marketId !== String(marketId)) continue;
+              applyRawBookFrame(rawBook, exactBookFrame);
               updateOrderbookAndGetMid(bookCache, frame);
+              if (!rawBookIntegrityOk(rawBook, exactBookFrame)) {
+                receivedBookSnapshot = false;
+                bookCache.clear();
+                rawBook.bids.clear();
+                rawBook.asks.clear();
+                if (bookUpdateTimer) { clearTimeout(bookUpdateTimer); bookUpdateTimer = null; }
+                bookLiveRef.current = false;
+                setBookIsLive(false);
+                setBookChecksumVerified(false);
+                setBookResyncs((count) => count + 1);
+                // RISEx specifies unsubscribe -> subscribe after a checksum mismatch.
+                socket.send(JSON.stringify({method:'unsubscribe',params:{channel:'orderbook',market_ids:[Number(marketId)]}}));
+                socket.send(JSON.stringify({method:'subscribe',params:{channel:'orderbook',market_ids:[Number(marketId)]}}));
+                continue;
+              }
+              if (!exactBookFrame.isSnapshot) setBookChecksumVerified(true);
               if (!bookUpdateTimer) bookUpdateTimer = setTimeout(flushBook, 120);
             }
             const fresh: MarketTrade[] = frames
               .filter((frame) => frame.kind === 'trade' && frame.marketId === String(marketId))
               .map((frame) => frame.kind === 'trade' ? frame.trade : null)
-              .filter((trade): trade is MarketTrade => trade !== null);
-            if (fresh.length > 0) {
-              setTrades((prev) => {
-                const seen = new Set(prev.map((x) => x.id));
-                return [...fresh.filter((x) => !seen.has(x.id)), ...prev].slice(0, 60);
+              .filter((trade): trade is MarketTrade => trade !== null)
+              .filter(trade => {
+                const key = `${marketId}:${trade.id}`;
+                if (observedTradeIds.has(key)) return false;
+                observedTradeIds.add(key);
+                // Keep a bounded deduplication window over reconnects.
+                if (observedTradeIds.size > 5000) {
+                  const oldest=observedTradeIds.values().next().value;
+                  if (oldest)observedTradeIds.delete(oldest);
+                }
+                return true;
               });
-              setCandles((prev) => {
-                if (prev.length === 0) return prev;
-                let bars = normalizeCandles(prev);
+            if (fresh.length > 0) {
+              setLastTradeReceivedAt(Date.now());
+              setTrades((prev) => mergeExplorerTradeTape(fresh, prev, 80));
+              setCandleState((previous) => {
+                if (previous.marketId !== marketId || previous.resolution !== resolutionRef.current || !previous.rows.length) return previous;
+                let bars = normalizeCandles(previous.rows);
                 for (const tr of fresh) {
                   bars = mergeLiveTradeIntoBars(
                     bars,
@@ -230,17 +335,17 @@ export const TickerDetailPage: React.FC<{
                       size: Number(tr.size),
                       timeMs: nsToMs(tr.time) || Date.now(),
                     },
-                    resolution
+                    resolutionRef.current
                   );
                 }
-                return bars.map((b) => ({
+                return {...previous,rows:bars.map((b) => ({
                   time: b.time * 1000,
                   open: b.open,
                   high: b.high,
                   low: b.low,
                   close: b.close,
                   volume: b.volume,
-                }));
+                }))};
               });
             }
           } catch {
@@ -252,11 +357,18 @@ export const TickerDetailPage: React.FC<{
           ws = null;
           receivedBookSnapshot = false;
           bookCache.clear();
+          rawBook.bids.clear();
+          rawBook.asks.clear();
           if (bookUpdateTimer) { clearTimeout(bookUpdateTimer); bookUpdateTimer = null; }
           bookLiveRef.current = false;
           if (disposed) return;
           setBookIsLive(false);
+          setBookChecksumVerified(false);
+          setTradeSocketConnected(false);
           if (document.visibilityState === 'hidden') return;
+          // Immediately fall back to a fresh REST book rather than displaying
+          // the last received WS book throughout the reconnect backoff.
+          void loadMarketData(false);
           const delay = Math.min(30000, 1500 * Math.pow(2, attempt++));
           reconnectTimer = setTimeout(() => { reconnectTimer = null; connect(); }, delay);
         };
@@ -292,17 +404,15 @@ export const TickerDetailPage: React.FC<{
         // ignore
       }
     };
-  }, [marketId, resolution]);
+  }, [marketId]);
 
   const sortedPositions = useMemo(() => {
     const raw = analytics?.positions || [];
     const q = posSearch.trim().toLowerCase();
     const filtered = raw.filter((p) => {
       if (sideFilter !== 'ALL' && p.side !== sideFilter) return false;
-      if (q) {
-        const hitAddr = p.address.toLowerCase().includes(q);
-        const hitUser = p.username?.toLowerCase().includes(q);
-        if (!hitAddr && !hitUser) return false;
+      if (q && !matchesTraderQuery({ address: p.address, username: p.username }, q)) {
+        return false;
       }
       return true;
     });
@@ -351,8 +461,25 @@ export const TickerDetailPage: React.FC<{
   const funding1hPct = Number(market?.current_funding_rate || 0) * 100;
   const fundingApr = funding1hPct * 24 * 365;
 
-  const topAsks = useMemo(() => [...orderbook.asks].slice(0, 10).reverse(), [orderbook.asks]);
-  const topBids = useMemo(() => [...orderbook.bids].slice(0, 10), [orderbook.bids]);
+  const topAsks = useMemo(() => {
+    // Cumulate USD depth starting at the best ask, then reverse for visual asks above the spread.
+    let cumulativeUsd=0;
+    return orderbook.asks.slice(0,depthRows).map(level=>({
+      ...level,cumulativeUsd:(cumulativeUsd+=Number(level.price)*Number(level.size)),
+    })).reverse();
+  }, [orderbook.asks,depthRows]);
+  const topBids = useMemo(() => {
+    // Best bid first, with cumulative USD notional down the book.
+    let cumulativeUsd=0;
+    return orderbook.bids.slice(0,depthRows).map(level=>({
+      ...level,cumulativeUsd:(cumulativeUsd+=Number(level.price)*Number(level.size)),
+    }));
+  }, [orderbook.bids,depthRows]);
+  const bestBid = Number(orderbook.bids[0]?.price || 0);
+  const bestAsk = Number(orderbook.asks[0]?.price || 0);
+  const spread = bestBid > 0 && bestAsk > bestBid ? bestAsk - bestBid : null;
+  const lastExecutionPrice = Number(trades[0]?.price || market?.last_price || 0);
+  const lastExecutionTime = trades[0]?.time ? nsToMs(trades[0].time) : null;
   const maxBookSize = useMemo(
     () =>
       Math.max(
@@ -363,6 +490,16 @@ export const TickerDetailPage: React.FC<{
     [topAsks, topBids]
   );
 
+  const formatBookSize = (val: number | string | null | undefined): string => {
+    const num = Number(val);
+    if (!Number.isFinite(num) || num <= 0) return '0';
+    const abs = Math.abs(num);
+    if (abs >= 100) return formatNumber(num, 2);
+    if (abs >= 1) return formatNumber(num, 3);
+    if (abs >= 0.01) return formatNumber(num, 4);
+    return formatNumber(num, 6);
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Bar */}
@@ -371,7 +508,7 @@ export const TickerDetailPage: React.FC<{
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-700/60 bg-[#090e1a] px-3 py-1.5 text-xs text-slate-300 hover:border-[#ffb02e]/60 hover:text-[#e8edfb]"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 hover:border-amber-500/60 hover:text-slate-900 dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-slate-300 dark:hover:border-[#ffb02e]/60 dark:hover:text-[#e8edfb] transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             All Markets
@@ -380,10 +517,10 @@ export const TickerDetailPage: React.FC<{
             <div className="flex items-center gap-2.5">
               <TokenBadge symbol={market.base_asset_symbol} size={32} />
               <div>
-                <h1 className="font-display text-xl sm:text-2xl font-bold text-[#e8edfb]">
+                <h1 className="font-display text-xl sm:text-2xl font-bold text-slate-900 dark:text-[#e8edfb]">
                   {market.display_name}
                 </h1>
-                <div className="text-[11px] font-mono text-slate-400">
+                <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
                   Market #{market.market_id} · Max {market.config?.max_leverage}x · {market.category || 'PERP'}
                 </div>
               </div>
@@ -396,7 +533,7 @@ export const TickerDetailPage: React.FC<{
           <select
             value={marketId}
             onChange={(e) => onSelectMarket(e.target.value)}
-            className="rounded-xl border border-slate-700/60 bg-[#090e1a] px-3 py-1.5 text-xs font-mono text-[#e8edfb] focus:border-[#ffb02e] focus:outline-none"
+            className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-mono text-slate-900 focus:border-amber-500 focus:outline-none dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-[#e8edfb] dark:focus:border-[#ffb02e]"
           >
             {allMarkets.map((m) => (
               <option key={m.market_id} value={String(m.market_id)}>
@@ -410,58 +547,67 @@ export const TickerDetailPage: React.FC<{
       {/* Market Stats Strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <div className="sunrise-card rounded-xl p-3.5">
-          <div className="text-[11px] uppercase tracking-wider text-slate-400">Mark Price</div>
-          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-[#e8edfb]">
+          <div className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Mark Price</div>
+          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-slate-900 dark:text-[#e8edfb]">
             {formatPrice(markPrice)}
           </div>
-          <div className={`font-mono text-xs tabular-nums ${chg24h >= 0 ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'}`}>
+          <div className={`font-mono text-xs tabular-nums ${chg24h >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'}`}>
             {formatPct(chg24h)} (24h)
           </div>
         </div>
         <div className="sunrise-card rounded-xl p-3.5">
-          <div className="text-[11px] uppercase tracking-wider text-slate-400">Index Price</div>
-          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-slate-200">
+          <div className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Index Price</div>
+          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-slate-800 dark:text-slate-200">
             {formatPrice(market?.index_price)}
           </div>
-          <div className="font-mono text-[11px] text-slate-400">
+          <div className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
             H {formatPrice(market?.high_24h)} / L {formatPrice(market?.low_24h)}
           </div>
         </div>
         <div className="sunrise-card rounded-xl p-3.5">
-          <div className="text-[11px] uppercase tracking-wider text-slate-400">24h Volume</div>
-          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-[#e8edfb]">
+          <div className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">24h Volume</div>
+          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-slate-900 dark:text-[#e8edfb]">
             {formatUsd(market?.quote_volume_24h, true)}
           </div>
         </div>
         <div className="sunrise-card rounded-xl p-3.5">
-          <div className="text-[11px] uppercase tracking-wider text-slate-400">Open Interest</div>
-          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-[#ffb02e]">
+          <div className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Open Interest</div>
+          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-amber-600 dark:text-[#ffb02e]">
             {formatUsd(oiUsd, true)}
           </div>
-          <div className="font-mono text-[11px] text-slate-400">
+          <div className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
             {formatNumber(market?.open_interest, 2)} {market?.base_asset_symbol}
           </div>
         </div>
         <div className="sunrise-card rounded-xl p-3.5">
-          <div className="text-[11px] uppercase tracking-wider text-slate-400">Funding (1h / APR)</div>
-          <div className={`mt-1 font-mono text-base font-bold tabular-nums ${funding1hPct >= 0 ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'}`}>
+          <div className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Funding (1h / APR)</div>
+          <div className={`mt-1 font-mono text-base font-bold tabular-nums ${funding1hPct >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'}`}>
             {funding1hPct >= 0 ? '+' : ''}
             {funding1hPct.toFixed(4)}%
           </div>
-          <div className="font-mono text-[11px] text-slate-400">
+          <div className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
             {fundingApr >= 0 ? '+' : ''}
             {fundingApr.toFixed(1)}% APR
           </div>
         </div>
         <div className="sunrise-card rounded-xl p-3.5">
-          <div className="text-[11px] uppercase tracking-wider text-slate-400">Indexed Positions</div>
-          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-[#46a6ff]">
+          <div className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Indexed Positions</div>
+          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-blue-600 dark:text-[#46a6ff]">
             {analytics?.positioning?.totalPositions ?? 0}
           </div>
-          <div className="font-mono text-[11px] text-slate-400">
+          <div className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
             Across {analytics?.indexedTradersCount ?? 0} traders
           </div>
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-lg border border-slate-200 bg-slate-50/90 px-3 py-2 text-[10px] font-mono text-slate-600 dark:border-slate-800/60 dark:bg-[#080d18]/70 dark:text-slate-400">
+        <span>Last executed <strong className="text-slate-900 dark:text-[#e8edfb]">{lastExecutionPrice > 0 ? formatPrice(lastExecutionPrice) : '—'}</strong></span>
+        <span>{lastExecutionTime ? `Last fill ${new Date(lastExecutionTime).toLocaleTimeString()}` : 'Awaiting fills'}</span>
+        <span className={tradeSocketConnected ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-amber-600 dark:text-[#ffb02e]'}>
+          {tradeSocketConnected ? '● Trade WS live' : '○ Trade WS reconnecting'}
+          {lastTradeReceivedAt ? ` · ${new Date(lastTradeReceivedAt).toLocaleTimeString()}` : ''}
+        </span>
       </div>
 
       {/* Chart + Orderbook / Trades (stretched full-height row) */}
@@ -471,6 +617,7 @@ export const TickerDetailPage: React.FC<{
             marketId={marketId}
             symbol={market?.display_name}
             candles={candles}
+            historyRevision={candleState.restRevision}
             resolution={resolution}
             onResolutionChange={setResolution}
             liveMarkPrice={markPrice}
@@ -479,65 +626,95 @@ export const TickerDetailPage: React.FC<{
 
         {/* Orderbook + Recent Trades */}
         <div className="sunrise-card rounded-2xl p-4 lg:col-span-4 flex flex-col min-h-[540px]">
-          <div className="mb-3 flex items-center gap-1 rounded-xl border border-slate-800 bg-[#090e1a] p-1">
+          <div className="mb-3 flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-100/90 p-1 dark:border-slate-800 dark:bg-[#090e1a]">
             <button
               type="button"
               onClick={() => setBookTab('book')}
               className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors ${
-                bookTab === 'book' ? 'bg-[#131c31] text-[#ffb02e]' : 'text-slate-400'
+                bookTab === 'book'
+                  ? 'bg-white text-amber-600 shadow-xs dark:bg-[#131c31] dark:text-[#ffb02e]'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
             >
-              L2 Orderbook {bookIsLive && <span className="ml-1 text-[#22e0a1]" title="Live orderbook stream">●</span>}
+              L2 Orderbook <span className={bookIsLive ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-amber-600 dark:text-[#ffb02e]'} title={bookIsLive ? (bookChecksumVerified ? 'CRC32 verified WebSocket L2' : 'Live WS snapshot; awaiting verified delta') : 'REST fallback / reconnecting'}>●</span>
             </button>
             <button
               type="button"
               onClick={() => setBookTab('trades')}
               className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors ${
-                bookTab === 'trades' ? 'bg-[#131c31] text-[#ffb02e]' : 'text-slate-400'
+                bookTab === 'trades'
+                  ? 'bg-white text-amber-600 shadow-xs dark:bg-[#131c31] dark:text-[#ffb02e]'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
             >
-              Recent Fills ({trades.length})
+              Recent Fills ({trades.length}) <span className={tradeSocketConnected ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-amber-600 dark:text-[#ffb02e]'} title={tradeSocketConnected ? 'Trade stream connected' : 'Trade stream reconnecting'}>●</span>
             </button>
           </div>
 
           {bookTab === 'book' ? (
             <div className="flex-1 flex flex-col justify-between text-xs font-mono tabular-nums">
-              <div className="mb-1 flex justify-between text-[10px] uppercase text-slate-500">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500 dark:text-slate-400">
+                <span className={bookIsLive ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-amber-600 dark:text-[#ffb02e]'}>
+                  {bookIsLive ? (bookChecksumVerified ? '● CRC32 verified WS L2' : '● WS snapshot · awaiting CRC update') : '○ REST snapshot / reconnecting'}
+                </span>
+                <select
+                  value={depthRows}
+                  onChange={(e) => setDepthRows(Number(e.target.value))}
+                  className="rounded border border-slate-200 bg-white px-1 py-0.5 text-slate-700 dark:border-slate-700 dark:bg-[#090e1a] dark:text-slate-300"
+                  aria-label="Visible order book levels"
+                >
+                  {[10, 20, 30, 50].map((count) => <option key={count} value={count}>{count} levels</option>)}
+                </select>
+              </div>
+              {bookUpdatedAt !== null && (
+                <div className="mb-1 text-[10px] text-slate-500">
+                  L2 received {new Date(bookUpdatedAt).toLocaleTimeString()} · {bookIsLive ? 'WebSocket' : 'last received snapshot'}
+                </div>
+              )}
+              {bookResyncs > 0 && <div className="mb-1 text-[10px] text-amber-600 dark:text-[#ffb02e]">L2 checksum mismatch recovery: {bookResyncs} resync{bookResyncs === 1 ? '' : 's'}</div>}
+              {spread !== null && <div className="mb-1 flex justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                <span>Spread {formatPrice(spread)}</span>
+                <span>{(spread / ((bestAsk + bestBid) / 2) * 10_000).toFixed(2)} bps</span>
+              </div>}
+              <div className="mb-1 grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2 text-[9px] uppercase text-slate-500">
                 <span>Price</span>
-                <span>Size ({market?.base_asset_symbol})</span>
+                <span className="text-right">Size ({market?.base_asset_symbol})</span>
+                <span className="text-right">Cum. USD</span>
               </div>
               <div className="space-y-0.5">
                 {topAsks.map((a, idx) => {
                   const pct = (Number(a.size || 0) / maxBookSize) * 100;
                   return (
-                    <div key={idx} className="relative flex justify-between rounded px-2 py-1 overflow-hidden">
+                    <div key={idx} className="relative grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2 rounded px-2 py-1 overflow-hidden">
                       <div
-                        className="pointer-events-none absolute right-0 top-0 bottom-0 bg-[#ff4d6d]/14"
+                        className="pointer-events-none absolute right-0 top-0 bottom-0 bg-rose-500/14 dark:bg-[#ff4d6d]/14"
                         style={{ width: `${Math.min(100, pct)}%` }}
                       />
-                      <span className="relative text-[#ff4d6d]">{formatPrice(a.price)}</span>
-                      <span className="relative text-slate-300">{formatNumber(a.size, 3)}</span>
+                      <span className="relative text-rose-600 dark:text-[#ff4d6d]">{formatPrice(a.price)}</span>
+                      <span className="relative text-right text-slate-700 dark:text-slate-300">{formatBookSize(a.size)}</span>
+                      <span className="relative text-right text-slate-500 dark:text-slate-400">{formatUsd(a.cumulativeUsd, true)}</span>
                     </div>
                   );
                 })}
               </div>
 
-              <div className="my-2 flex items-center justify-between rounded-lg border border-slate-800 bg-[#090e1a] px-3 py-1.5">
-                <span className="text-[11px] text-slate-400">Mark</span>
-                <span className="font-bold text-[#ffb02e]">{formatPrice(markPrice)}</span>
+              <div className="my-2 flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 dark:border-slate-800 dark:bg-[#090e1a]">
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">Mark</span>
+                <span className="font-bold text-amber-600 dark:text-[#ffb02e]">{formatPrice(markPrice)}</span>
               </div>
 
               <div className="space-y-0.5">
                 {topBids.map((b, idx) => {
                   const pct = (Number(b.size || 0) / maxBookSize) * 100;
                   return (
-                    <div key={idx} className="relative flex justify-between rounded px-2 py-1 overflow-hidden">
+                    <div key={idx} className="relative grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2 rounded px-2 py-1 overflow-hidden">
                       <div
-                        className="pointer-events-none absolute right-0 top-0 bottom-0 bg-[#22e0a1]/14"
+                        className="pointer-events-none absolute right-0 top-0 bottom-0 bg-emerald-500/14 dark:bg-[#22e0a1]/14"
                         style={{ width: `${Math.min(100, pct)}%` }}
                       />
-                      <span className="relative text-[#22e0a1]">{formatPrice(b.price)}</span>
-                      <span className="relative text-slate-300">{formatNumber(b.size, 3)}</span>
+                      <span className="relative text-emerald-600 dark:text-[#22e0a1]">{formatPrice(b.price)}</span>
+                      <span className="relative text-right text-slate-700 dark:text-slate-300">{formatBookSize(b.size)}</span>
+                      <span className="relative text-right text-slate-500 dark:text-slate-400">{formatUsd(b.cumulativeUsd, true)}</span>
                     </div>
                   );
                 })}
@@ -546,11 +723,12 @@ export const TickerDetailPage: React.FC<{
           ) : (
             <div className="flex-1 max-h-[480px] overflow-y-auto space-y-1 text-xs font-mono tabular-nums">
               {trades.map((tr, i) => {
-                const isBuy = tr.maker_side?.toLowerCase().includes('buy') || tr.maker_side === '0';
+                // Trade feed reports the maker's side; taker flow is the opposite.
+                const isBuy = tr.maker_side === '1' || tr.maker_side?.toLowerCase() === 'sell';
                 return (
-                  <div key={`${tr.id}-${i}`} className="flex items-center justify-between rounded px-2 py-1 hover:bg-[#131c31]/60">
-                    <span className={isBuy ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'}>{formatPrice(tr.price)}</span>
-                    <span className="text-slate-300">{formatNumber(tr.size, 3)}</span>
+                  <div key={`${tr.id}-${i}`} className="flex items-center justify-between rounded px-2 py-1 hover:bg-slate-100 dark:hover:bg-[#131c31]/60">
+                    <span className={isBuy ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'}>{formatPrice(tr.price)}</span>
+                    <span className="text-slate-700 dark:text-slate-300">{formatBookSize(tr.size)}</span>
                     <span className="text-slate-500">{formatTimeShort(tr.time)}</span>
                   </div>
                 );
@@ -578,32 +756,32 @@ export const TickerDetailPage: React.FC<{
           />
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="sunrise-card rounded-xl p-3">
-              <div className="text-[11px] uppercase text-slate-400">Avg Long Entry</div>
-              <div className="mt-1 font-mono text-sm font-bold text-[#22e0a1]">
+              <div className="text-[11px] uppercase text-slate-500 dark:text-slate-400">Avg Long Entry</div>
+              <div className="mt-1 font-mono text-sm font-bold text-emerald-600 dark:text-[#22e0a1]">
                 {analytics.positioning.avgLongEntry > 0 ? formatPrice(analytics.positioning.avgLongEntry) : '—'}
               </div>
             </div>
             <div className="sunrise-card rounded-xl p-3">
-              <div className="text-[11px] uppercase text-slate-400">Avg Short Entry</div>
-              <div className="mt-1 font-mono text-sm font-bold text-[#ff4d6d]">
+              <div className="text-[11px] uppercase text-slate-500 dark:text-slate-400">Avg Short Entry</div>
+              <div className="mt-1 font-mono text-sm font-bold text-rose-600 dark:text-[#ff4d6d]">
                 {analytics.positioning.avgShortEntry > 0 ? formatPrice(analytics.positioning.avgShortEntry) : '—'}
               </div>
             </div>
             <div className="sunrise-card rounded-xl p-3">
-              <div className="text-[11px] uppercase text-slate-400">Longs Unrealized PnL</div>
+              <div className="text-[11px] uppercase text-slate-500 dark:text-slate-400">Longs Unrealized PnL</div>
               <div
                 className={`mt-1 font-mono text-sm font-bold ${
-                  analytics.positioning.longUnrealizedPnl >= 0 ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'
+                  analytics.positioning.longUnrealizedPnl >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'
                 }`}
               >
                 {formatSignedUsd(analytics.positioning.longUnrealizedPnl, true)}
               </div>
             </div>
             <div className="sunrise-card rounded-xl p-3">
-              <div className="text-[11px] uppercase text-slate-400">Shorts Unrealized PnL</div>
+              <div className="text-[11px] uppercase text-slate-500 dark:text-slate-400">Shorts Unrealized PnL</div>
               <div
                 className={`mt-1 font-mono text-sm font-bold ${
-                  analytics.positioning.shortUnrealizedPnl >= 0 ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'
+                  analytics.positioning.shortUnrealizedPnl >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'
                 }`}
               >
                 {formatSignedUsd(analytics.positioning.shortUnrealizedPnl, true)}
@@ -615,26 +793,28 @@ export const TickerDetailPage: React.FC<{
 
       {/* Open Positions on this Market (Sortable by PnL, ROI, Portfolio Value, Liq Distance) */}
       <div className="sunrise-card overflow-hidden rounded-2xl">
-        <div className="flex flex-col gap-3 border-b border-slate-800/80 p-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-3 border-b border-slate-200 p-4 lg:flex-row lg:items-center lg:justify-between dark:border-slate-800/80">
           <div>
-            <h2 className="font-display text-base font-bold text-[#e8edfb]">
+            <h2 className="font-display text-base font-bold text-slate-900 dark:text-[#e8edfb]">
               Open Positions on {market?.display_name || `Market #${marketId}`} ({sortedPositions.length})
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Sort live trader positions by Unrealized PnL, ROI %, Portfolio Value, Notional Size, or Liquidation Proximity
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1 rounded-xl border border-slate-800 bg-[#090e1a] p-1 text-xs">
-              <Filter className="ml-1.5 h-3 w-3 text-slate-400" />
+            <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-100/90 p-1 text-xs dark:border-slate-800 dark:bg-[#090e1a]">
+              <Filter className="ml-1.5 h-3 w-3 text-slate-500 dark:text-slate-400" />
               {(['ALL', 'LONG', 'SHORT'] as const).map((s) => (
                 <button
                   key={s}
                   type="button"
                   onClick={() => setSideFilter(s)}
-                  className={`rounded-lg px-2.5 py-1 font-mono ${
-                    sideFilter === s ? 'bg-[#ffb02e]/20 text-[#ffb02e]' : 'text-slate-400 hover:text-slate-200'
+                  className={`rounded-lg px-2.5 py-1 font-mono transition-colors ${
+                    sideFilter === s
+                      ? 'bg-amber-500/18 text-amber-700 font-semibold dark:bg-[#ffb02e]/20 dark:text-[#ffb02e]'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                   }`}
                 >
                   {s}
@@ -648,7 +828,7 @@ export const TickerDetailPage: React.FC<{
                 value={posSearch}
                 onChange={(e) => setPosSearch(e.target.value)}
                 placeholder="Filter username or 0x…"
-                className="rounded-xl border border-slate-700/60 bg-[#090e1a] py-1.5 pl-8 pr-3 text-xs text-[#e8edfb] placeholder:text-slate-500 focus:border-[#ffb02e] focus:outline-none"
+                className="rounded-xl border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-amber-500 focus:outline-none dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-[#e8edfb] dark:placeholder:text-slate-500 dark:focus:border-[#ffb02e]"
               />
             </div>
             <select
@@ -657,7 +837,7 @@ export const TickerDetailPage: React.FC<{
                 setPosSort(e.target.value as PosSortKey);
                 setPosDesc(true);
               }}
-              className="rounded-xl border border-slate-700/60 bg-[#090e1a] px-3 py-1.5 text-xs text-[#e8edfb] focus:border-[#ffb02e] focus:outline-none"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-amber-500 focus:outline-none dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-[#e8edfb] dark:focus:border-[#ffb02e]"
             >
               <option value="pnl">Sort: Unrealized PnL</option>
               <option value="roi">Sort: ROI %</option>
@@ -672,129 +852,139 @@ export const TickerDetailPage: React.FC<{
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="border-b border-slate-800 bg-[#090e1a]/80 text-[11px] uppercase tracking-wider text-slate-400">
+            <thead className="border-b border-slate-200 bg-slate-50/90 text-[11px] uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-[#090e1a]/80 dark:text-slate-400">
               <tr>
                 <th className="py-3 pl-4 pr-2">Trader</th>
                 <th className="py-3 px-2">Side</th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-[#ffb02e]" onClick={() => togglePosSort('notional')}>
+                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => togglePosSort('notional')}>
                   <span className="inline-flex items-center gap-1">Position Value <ArrowDownUp className="h-3 w-3" /></span>
                 </th>
                 <th className="py-3 px-2 text-right">Entry</th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-[#ffb02e]" onClick={() => togglePosSort('liqDist')}>
+                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => togglePosSort('liqDist')}>
                   <span className="inline-flex items-center gap-1">Liq. Price & Risk <ArrowDownUp className="h-3 w-3" /></span>
                 </th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-[#ffb02e]" onClick={() => togglePosSort('pnl')}>
+                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => togglePosSort('pnl')}>
                   <span className="inline-flex items-center gap-1">Unrealized PnL <ArrowDownUp className="h-3 w-3" /></span>
                 </th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-[#ffb02e]" onClick={() => togglePosSort('roi')}>
+                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => togglePosSort('roi')}>
                   <span className="inline-flex items-center gap-1">ROI % <ArrowDownUp className="h-3 w-3" /></span>
                 </th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-[#ffb02e]" onClick={() => togglePosSort('portfolioValue')}>
+                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => togglePosSort('portfolioValue')}>
                   <span className="inline-flex items-center gap-1">Portfolio Value <ArrowDownUp className="h-3 w-3" /></span>
                 </th>
                 <th className="py-3 pl-2 pr-4 text-right">Peek</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 tabular-nums">
+            <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 tabular-nums">
               {loading && (
                 <tr>
-                  <td colSpan={9} className="py-10 text-center text-slate-400">
-                    <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin text-[#ffb02e]" />
+                  <td colSpan={9} className="py-10 text-center text-slate-500 dark:text-slate-400">
+                    <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin text-amber-500 dark:text-[#ffb02e]" />
                     Loading trader positions…
                   </td>
                 </tr>
               )}
               {!loading && sortedPositions.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="py-10 text-center text-slate-400">
+                  <td colSpan={9} className="py-10 text-center text-slate-500 dark:text-slate-400">
                     No open positions currently indexed for this ticker filter.
                   </td>
                 </tr>
               )}
               {!loading &&
-                sortedPositions.map((p, idx) => (
-                  <tr
-                    key={`${p.address}-${idx}`}
-                    onClick={() => onSelectWallet(p.address)}
-                    className="cursor-pointer hover:bg-[#131c31]/70 transition-colors"
-                  >
-                    <td className="py-3 pl-4 pr-2">
-                      <div className="flex items-center gap-2.5">
-                        <TraderAvatar
-                          address={p.address}
-                          avatarUrl={p.avatarUrl}
-                          username={p.username}
-                          size={26}
-                        />
-                        <div className="min-w-0">
-                          <div className="truncate font-semibold text-[#e8edfb] max-w-[140px]">
-                            {p.username || shortAddress(p.address)}
-                          </div>
-                          <div className="font-mono text-[10px] text-slate-500">
-                            {shortAddress(p.address, 6, 4)}
+                sortedPositions.map((p, idx) => {
+                  const traderInfo = formatTraderDisplay(p.address, p.username);
+                  return (
+                    <tr
+                      key={`${p.address}-${idx}`}
+                      onClick={() => onSelectWallet(p.address)}
+                      className="cursor-pointer hover:bg-slate-50 dark:hover:bg-[#131c31]/70 transition-colors"
+                    >
+                      <td className="py-3 pl-4 pr-2">
+                        <div className="flex items-center gap-2.5">
+                          <TraderAvatar
+                            address={p.address}
+                            avatarUrl={p.avatarUrl}
+                            username={traderInfo.displayName}
+                            size={26}
+                          />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="truncate font-semibold text-slate-900 dark:text-[#e8edfb] max-w-[140px]">
+                                {traderInfo.displayName}
+                              </span>
+                              {traderInfo.isVault && traderInfo.badgeLabel && (
+                                <span className="shrink-0 rounded border border-violet-500/30 bg-violet-500/12 px-1.5 py-0.5 text-[9px] font-mono font-semibold uppercase tracking-wide text-violet-600 dark:border-[#8b7bff]/35 dark:bg-[#8b7bff]/15 dark:text-[#8b7bff]">
+                                  {traderInfo.badgeLabel}
+                                </span>
+                              )}
+                            </div>
+                            <div className="font-mono text-[10px] text-slate-500">
+                              {shortAddress(p.address, 6, 4)}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-3 px-2">
-                      <span
-                        className={`rounded px-1.5 py-0.5 text-[10px] font-mono font-semibold ${
-                          p.side === 'LONG'
-                            ? 'bg-[#22e0a1]/15 text-[#22e0a1]'
-                            : 'bg-[#ff4d6d]/15 text-[#ff4d6d]'
+                      </td>
+                      <td className="py-3 px-2">
+                        <span
+                          className={`rounded px-1.5 py-0.5 text-[10px] font-mono font-semibold ${
+                            p.side === 'LONG'
+                              ? 'bg-emerald-500/12 text-emerald-700 dark:bg-[#22e0a1]/15 dark:text-[#22e0a1]'
+                              : 'bg-rose-500/12 text-rose-700 dark:bg-[#ff4d6d]/15 dark:text-[#ff4d6d]'
+                          }`}
+                        >
+                          {p.side} {p.leverage.toFixed(1)}x
+                        </span>
+                      </td>
+                      <td className="py-3 px-2 text-right font-mono">
+                        <div className="font-semibold text-slate-900 dark:text-[#e8edfb]">{formatUsd(p.notionalUsd, true)}</div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400">{formatNumber(p.size, 3)} {market?.base_asset_symbol}</div>
+                      </td>
+                      <td className="py-3 px-2 text-right font-mono text-slate-700 dark:text-slate-300">
+                        {formatPrice(p.entryPrice)}
+                      </td>
+                      <td className="py-3 px-2 text-right font-mono">
+                        <div className="text-slate-700 dark:text-slate-300">{p.liquidationPrice > 0 ? formatPrice(p.liquidationPrice) : '—'}</div>
+                        <div className="mt-0.5 flex justify-end">
+                          <LiqDistanceBadge
+                            markPrice={p.markPrice}
+                            liquidationPrice={p.liquidationPrice}
+                            side={p.side}
+                          />
+                        </div>
+                      </td>
+                      <td
+                        className={`py-3 px-2 text-right font-mono font-semibold ${
+                          p.unrealizedPnl >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'
                         }`}
                       >
-                        {p.side} {p.leverage.toFixed(1)}x
-                      </span>
-                    </td>
-                    <td className="py-3 px-2 text-right font-mono">
-                      <div className="font-semibold text-[#e8edfb]">{formatUsd(p.notionalUsd, true)}</div>
-                      <div className="text-[10px] text-slate-400">{formatNumber(p.size, 3)} {market?.base_asset_symbol}</div>
-                    </td>
-                    <td className="py-3 px-2 text-right font-mono text-slate-300">
-                      {formatPrice(p.entryPrice)}
-                    </td>
-                    <td className="py-3 px-2 text-right font-mono">
-                      <div className="text-slate-300">{p.liquidationPrice > 0 ? formatPrice(p.liquidationPrice) : '—'}</div>
-                      <div className="mt-0.5 flex justify-end">
-                        <LiqDistanceBadge
-                          markPrice={p.markPrice}
-                          liquidationPrice={p.liquidationPrice}
-                          side={p.side}
-                        />
-                      </div>
-                    </td>
-                    <td
-                      className={`py-3 px-2 text-right font-mono font-semibold ${
-                        p.unrealizedPnl >= 0 ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'
-                      }`}
-                    >
-                      {formatSignedUsd(p.unrealizedPnl, true)}
-                    </td>
-                    <td
-                      className={`py-3 px-2 text-right font-mono font-semibold ${
-                        p.roiPct >= 0 ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'
-                      }`}
-                    >
-                      {formatPct(p.roiPct)}
-                    </td>
-                    <td className="py-3 px-2 text-right font-mono text-slate-200">
-                      {formatUsd(p.portfolioValue, true)}
-                    </td>
-                    <td className="py-3 pl-2 pr-4 text-right">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onPeekTrader(p.address);
-                        }}
-                        className="rounded-lg border border-slate-700/60 bg-[#090e1a] p-1.5 text-slate-300 hover:border-[#ffb02e]/60 hover:text-[#ffb02e]"
+                        {formatSignedUsd(p.unrealizedPnl, true)}
+                      </td>
+                      <td
+                        className={`py-3 px-2 text-right font-mono font-semibold ${
+                          p.roiPct >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'
+                        }`}
                       >
-                        <Eye className="h-3.5 w-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                        {formatPct(p.roiPct)}
+                      </td>
+                      <td className="py-3 px-2 text-right font-mono text-slate-800 dark:text-slate-200">
+                        {formatUsd(p.portfolioValue, true)}
+                      </td>
+                      <td className="py-3 pl-2 pr-4 text-right">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onPeekTrader(p.address);
+                          }}
+                          className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 hover:border-amber-500/60 hover:text-amber-600 dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-slate-300 dark:hover:border-[#ffb02e]/60 dark:hover:text-[#ffb02e]"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>
@@ -804,12 +994,12 @@ export const TickerDetailPage: React.FC<{
       {fundingHistory.length > 0 && (
         <div className="sunrise-card rounded-2xl p-4">
           <div className="mb-3 flex items-center gap-2">
-            <Clock className="h-4 w-4 text-[#ffb02e]" />
-            <h3 className="font-display text-sm font-bold text-[#e8edfb]">Recent Funding Rate Settlements</h3>
+            <Clock className="h-4 w-4 text-amber-600 dark:text-[#ffb02e]" />
+            <h3 className="font-display text-sm font-bold text-slate-900 dark:text-[#e8edfb]">Recent Funding Rate Settlements</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs font-mono tabular-nums">
-              <thead className="border-b border-slate-800 text-[11px] uppercase text-slate-400">
+              <thead className="border-b border-slate-200 text-[11px] uppercase text-slate-500 dark:border-slate-800 dark:text-slate-400">
                 <tr>
                   <th className="py-2 pr-3">Settlement Time</th>
                   <th className="py-2 px-3 text-right">1h Rate</th>
@@ -817,22 +1007,22 @@ export const TickerDetailPage: React.FC<{
                   <th className="py-2 pl-3 text-right">Index Price</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60">
                 {fundingHistory.slice(0, 12).map((f, i) => {
                   const r1 = Number(f.funding_rate || 0) * 100;
                   const r8 = Number(f.funding_rate_8h || 0) * 100;
                   return (
                     <tr key={i}>
-                      <td className="py-2 pr-3 text-slate-300">{formatDateTime(f.time || f.block_time)}</td>
-                      <td className={`py-2 px-3 text-right ${r1 >= 0 ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'}`}>
+                      <td className="py-2 pr-3 text-slate-600 dark:text-slate-300">{formatDateTime(f.time || f.block_time)}</td>
+                      <td className={`py-2 px-3 text-right ${r1 >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'}`}>
                         {r1 >= 0 ? '+' : ''}
                         {r1.toFixed(5)}%
                       </td>
-                      <td className={`py-2 px-3 text-right ${r8 >= 0 ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'}`}>
+                      <td className={`py-2 px-3 text-right ${r8 >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'}`}>
                         {r8 >= 0 ? '+' : ''}
                         {r8.toFixed(4)}%
                       </td>
-                      <td className="py-2 pl-3 text-right text-slate-200">{formatPrice(f.index_price)}</td>
+                      <td className="py-2 pl-3 text-right text-slate-800 dark:text-slate-200">{formatPrice(f.index_price)}</td>
                     </tr>
                   );
                 })}

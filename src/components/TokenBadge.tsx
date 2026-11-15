@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { cleanBaseSymbol, normalizeMarketSector, type MarketSectorId } from '../utils/overviewAnalytics';
 
 interface AssetTheme {
@@ -242,6 +242,118 @@ function renderVectorMark(clean: string, sector: MarketSectorId, theme: AssetThe
   }
 }
 
+/** Verified CoinMarketCap official 64x64 coin IDs matched against live RISEx crypto markets. */
+const CRYPTO_CMC_IDS: Record<string, number> = {
+  BTC: 1,
+  ETH: 1027,
+  BNB: 1839,
+  SOL: 5426,
+  HYPE: 32196, // Hyperliquid
+  XRP: 52,
+  TAO: 22974,
+  ZEC: 1437,
+  ONDO: 21159,
+  NEAR: 6535,
+  VVV: 35509, // Venice Token
+  LIT: 39125, // Lighter
+  DOGE: 74,
+  AERO: 29270, // Aerodrome Finance
+  AAVE: 7278,
+  PUMP: 36507, // Pump.fun
+  ARB: 11841,
+  ENA: 30171,
+  MON: 30495, // Monad
+  WLD: 13502,
+  STRK: 22691,
+  ZRO: 26997,
+  XMR: 328,
+  CHIP: 39870, // USD.AI
+  PEPE: 24478,
+  '1000PEPE': 24478,
+  SUI: 20947,
+};
+
+const CRYPTO_ICON_SLUGS: Record<string, string> = {
+  BTC: 'btc', ETH: 'eth', SOL: 'sol', BNB: 'bnb', XRP: 'xrp', ADA: 'ada', DOGE: 'doge',
+  AVAX: 'avax', DOT: 'dot', LTC: 'ltc', LINK: 'link', ATOM: 'atom', UNI: 'uni',
+  AAVE: 'aave', XLM: 'xlm', BCH: 'bch', XMR: 'xmr', ZEC: 'zec',
+  FIL: 'fil', TRX: 'trx', ETC: 'etc', EOS: 'eos',
+};
+
+const TV_SYMBOL_PATHS: Record<string, string> = {
+  // Commodities
+  XAU: 'metal/gold--big.svg',
+  XAG: 'metal/silver--big.svg',
+  CL: 'crude-oil--big.svg',
+  BZ: 'crude-oil--big.svg',
+  // Index ETFs
+  SPY: 'indices/s-and-p-500--big.svg',
+  QQQ: 'indices/nasdaq-100--big.svg',
+  EWZ: 'country/BR--big.svg',
+  KORU: 'country/KR--big.svg',
+  // Stocks
+  NVDA: 'nvidia--big.svg',
+  TSLA: 'tesla--big.svg',
+  META: 'meta-platforms--big.svg',
+  GOOGL: 'alphabet--big.svg',
+  GOOG: 'alphabet--big.svg',
+  MSTR: 'microstrategy--big.svg',
+  INTC: 'intel--big.svg',
+  MU: 'micron-technology--big.svg',
+  ARM: 'arm--big.svg',
+  QCOM: 'qualcomm--big.svg',
+  SNDK: 'sandisk--big.svg',
+  CRCL: 'circle--big.svg',
+  SPCX: 'spacex--big.svg',
+  CRWV: 'coreweave--big.svg',
+  HOOD: 'robinhood--big.svg',
+  LLY: 'eli-lilly--big.svg',
+  HIMS: 'hims-and-hers-health--big.svg',
+  SOXL: 'direxion--big.svg',
+};
+
+const BRAND_ICON_COLORS: Record<string, string> = {
+  AAPL: '000000',
+  MSFT: '5E5E5E',
+  AMZN: 'FF9900',
+  AMD: 'ED1C24',
+  NFLX: 'E50914',
+  ORCL: 'F80000',
+  CRM: '00A1E0',
+  PYPL: '003087',
+};
+
+const BRAND_ICON_SLUGS: Record<string, string> = {
+  AAPL: 'apple',
+  MSFT: 'microsoft',
+  AMZN: 'amazon',
+  AMD: 'amd',
+  NFLX: 'netflix',
+  ORCL: 'oracle',
+  CRM: 'salesforce',
+  PYPL: 'paypal',
+};
+
+export function curatedAssetLogoUrl(symbol: string, sector: MarketSectorId): string | null {
+  const clean = cleanBaseSymbol(symbol);
+  if (sector === 'crypto') {
+    if (CRYPTO_CMC_IDS[clean]) {
+      return `https://s2.coinmarketcap.com/static/img/coins/64x64/${CRYPTO_CMC_IDS[clean]}.png`;
+    }
+    if (CRYPTO_ICON_SLUGS[clean]) {
+      return `https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/svg/color/${CRYPTO_ICON_SLUGS[clean]}.svg`;
+    }
+    return null;
+  }
+  if (TV_SYMBOL_PATHS[clean]) {
+    return `https://s3-symbol-logo.tradingview.com/${TV_SYMBOL_PATHS[clean]}`;
+  }
+  if (sector === 'stocks' && BRAND_ICON_SLUGS[clean]) {
+    return `https://cdn.simpleicons.org/${BRAND_ICON_SLUGS[clean]}/${BRAND_ICON_COLORS[clean] || '000000'}`;
+  }
+  return null;
+}
+
 export const TokenBadge: React.FC<{
   symbol: string;
   size?: number;
@@ -252,13 +364,37 @@ export const TokenBadge: React.FC<{
   const sector = normalizeMarketSector(category, clean);
   const theme = ASSET_THEMES[clean] || SECTOR_DEFAULT_THEMES[sector];
   const radius = sector === 'stocks' || sector === 'index_etf' ? 6 : 12;
+  const [logoError, setLogoError] = useState(false);
+  const logoUrl = curatedAssetLogoUrl(clean, sector);
+  useEffect(() => setLogoError(false), [logoUrl]);
+  const isSimpleIcon = Boolean(logoUrl && logoUrl.includes('cdn.simpleicons.org'));
+
+  if (logoUrl && !logoError) {
+    return (
+      <img
+        src={logoUrl}
+        alt={`${clean} icon`}
+        width={size}
+        height={size}
+        decoding="async"
+        onError={() => setLogoError(true)}
+        className={`shrink-0 select-none object-cover motion-safe:transition-transform motion-safe:duration-200 motion-safe:hover:scale-110 ${
+          isSimpleIcon
+            ? 'rounded-[28%] bg-white p-[3px] ring-1 ring-slate-700/40'
+            : 'rounded-full ring-1 ring-slate-700/50'
+        } ${className}`}
+        style={{ width: size, height: size }}
+        referrerPolicy="no-referrer"
+      />
+    );
+  }
 
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      className={`shrink-0 select-none ${className}`}
+      className={`shrink-0 select-none motion-safe:transition-transform motion-safe:duration-200 motion-safe:hover:scale-110 ${className}`}
       style={{ width: size, height: size }}
       aria-label={clean}
     >

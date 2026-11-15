@@ -3,7 +3,8 @@ import { ArrowDownUp, BarChart3, Search } from 'lucide-react';
 import { useMarketStream } from '../context/MarketWebSocketContext';
 import type { MarketWithStats } from '../utils/marketWsPatch';
 import { calcMarketChangePct, formatPct, formatPrice, formatUsd } from '../utils/format';
-import { MarketMoveMeter } from './Charts';
+import { MarketMiniChart } from './MarketMiniChart';
+import { useMarketSparklines } from '../hooks/useMarketSparklines';
 import { TokenBadge } from './TraderAvatar';
 import { filterDirectoryMarkets, summarizeDirectoryMarkets } from '../utils/marketDirectory';
 
@@ -68,6 +69,12 @@ export const MarketsPage: React.FC<{
     });
   }, [filteredMarkets, sortBy, sortDesc]);
 
+  const miniIds=useMemo(
+    ()=>filteredAndSorted.slice(0,30).map(m=>String(m.market_id)),
+    [filteredAndSorted]
+  );
+  const miniCharts=useMarketSparklines(miniIds);
+
   const toggleSort = (k: MarketSortKey) => {
     if (sortBy === k) setSortDesc((d) => !d);
     else {
@@ -80,11 +87,11 @@ export const MarketsPage: React.FC<{
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-[#ffb02e]">
+          <div className="flex items-center gap-2 text-xs font-mono text-amber-600 dark:text-[#ffb02e]">
             <BarChart3 className="h-3.5 w-3.5" />
             RISEx PERPETUAL MARKETS ({loading && markets.length === 0 ? '—' : summary.marketCount})
           </div>
-          <h1 className="mt-1 font-display text-2xl sm:text-3xl font-bold text-[#e8edfb]">
+          <h1 className="mt-1 font-display text-2xl sm:text-3xl font-bold text-slate-900 dark:text-[#e8edfb]">
             {activeHeading} & Live Positioning
           </h1>
         </div>
@@ -96,7 +103,7 @@ export const MarketsPage: React.FC<{
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Filter ticker (BTC, ETH, NVDA, XAU…)"
-            className="w-full rounded-xl border border-slate-700/60 bg-[#090e1a] py-2 pl-9 pr-3 text-xs text-[#e8edfb] placeholder:text-slate-500 focus:border-[#ffb02e] focus:outline-none"
+            className="w-full rounded-xl border border-slate-300 dark:border-slate-700/60 bg-white dark:bg-[#090e1a] py-2 pl-9 pr-3 text-xs text-slate-900 dark:text-[#e8edfb] placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-amber-500 dark:focus:border-[#ffb02e] focus:outline-none"
           />
         </div>
       </div>
@@ -108,35 +115,35 @@ export const MarketsPage: React.FC<{
             key={cat}
             type="button"
             onClick={() => setCategory(cat)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
               category === cat
                 ? 'sunrise-gradient-btn font-semibold'
-                : 'border border-slate-800 bg-[#090e1a] text-slate-400 hover:text-[#e8edfb]'
+                : 'border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#090e1a] text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700 hover:text-slate-900 dark:hover:text-[#e8edfb]'
             }`}
           >
             {cat}
           </button>
         ))}
-        <label className="ml-auto inline-flex items-center gap-2 text-[11px] font-mono text-slate-400 cursor-pointer">
+        <label className="ml-auto inline-flex items-center gap-2 text-[11px] font-mono text-slate-600 dark:text-slate-400 cursor-pointer">
           <input
             type="checkbox"
             checked={includeInactive}
             onChange={(event) => setIncludeInactive(event.target.checked)}
-            className="accent-[#ffb02e]"
+            className="accent-amber-600 dark:accent-[#ffb02e]"
           />
           Include inactive
         </label>
       </div>
 
       {error && markets.length === 0 && (
-        <div className="flex items-center justify-between rounded-xl border border-[#ff4d6d]/40 bg-[#ff4d6d]/10 px-4 py-3 text-xs text-[#ff4d6d]">
+        <div className="flex items-center justify-between rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-xs text-rose-700 dark:text-[#ff4d6d]">
           <span>{error}</span>
           <button
             type="button"
             onClick={() => {
               void refreshSnapshot();
             }}
-            className="rounded-lg border border-[#ff4d6d]/40 px-3 py-1 font-mono hover:bg-[#ff4d6d]/20"
+            className="rounded-lg border border-rose-500/40 px-3 py-1 font-mono hover:bg-rose-500/20"
           >
             Retry
           </button>
@@ -145,21 +152,21 @@ export const MarketsPage: React.FC<{
 
       {/* A single category-aware market summary replaces the redundant RWA section. */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3" aria-label={`${activeHeading} summary`}>
-        <div className="sunrise-card rounded-xl p-4">
-          <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400">Markets</div>
-          <div className="mt-1 font-mono text-xl font-bold tabular-nums text-[#e8edfb]">
+        <div className="sunrise-card rounded-xl border-t-2 border-t-blue-500/70 dark:border-t-[#46a6ff]/65 p-4">
+          <div className="text-[11px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400">Markets</div>
+          <div className="mt-1 font-mono text-xl font-bold tabular-nums text-blue-600 dark:text-[#46a6ff]">
             {loading && markets.length === 0 ? '—' : summary.marketCount.toLocaleString()}
           </div>
         </div>
-        <div className="sunrise-card rounded-xl p-4">
-          <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400">24h Volume</div>
-          <div className="mt-1 font-mono text-xl font-bold tabular-nums text-[#e8edfb]">
+        <div className="sunrise-card rounded-xl border-t-2 border-t-emerald-500/70 dark:border-t-[#22e0a1]/65 p-4">
+          <div className="text-[11px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400">24h Volume</div>
+          <div className="mt-1 font-mono text-xl font-bold tabular-nums text-slate-900 dark:text-[#e8edfb]">
             {loading && markets.length === 0 ? '—' : formatUsd(summary.volume24h, true)}
           </div>
         </div>
-        <div className="sunrise-card rounded-xl p-4">
-          <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400">Open Interest (USD)</div>
-          <div className="mt-1 font-mono text-xl font-bold tabular-nums text-[#e8edfb]">
+        <div className="sunrise-card rounded-xl border-t-2 border-t-amber-500/70 dark:border-t-[#ffb02e]/65 p-4">
+          <div className="text-[11px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400">Open Interest (USD)</div>
+          <div className="mt-1 font-mono text-xl font-bold tabular-nums text-amber-600 dark:text-[#ffb02e]">
             {loading && markets.length === 0 ? '—' : formatUsd(summary.openInterestUsd, true)}
           </div>
         </div>
@@ -169,35 +176,35 @@ export const MarketsPage: React.FC<{
       <div className="sunrise-card overflow-hidden rounded-2xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="border-b border-slate-800 bg-[#090e1a]/80 text-[11px] uppercase tracking-wider text-slate-400">
+            <thead className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/95 dark:bg-[#090e1a]/80 text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
               <tr>
                 <th className="py-3 pl-4 pr-2">Ticker</th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-[#ffb02e]" onClick={() => toggleSort('price')}>
+                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => toggleSort('price')}>
                   <span className="inline-flex items-center gap-1">Mark Price <ArrowDownUp className="h-3 w-3" /></span>
                 </th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-[#ffb02e]" onClick={() => toggleSort('change')}>
+                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => toggleSort('change')}>
                   <span className="inline-flex items-center gap-1">24h % <ArrowDownUp className="h-3 w-3" /></span>
                 </th>
                 <th className="py-3 px-2 text-center">Trend</th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-[#ffb02e]" onClick={() => toggleSort('volume')}>
+                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => toggleSort('volume')}>
                   <span className="inline-flex items-center gap-1">24h Volume <ArrowDownUp className="h-3 w-3" /></span>
                 </th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-[#ffb02e]" onClick={() => toggleSort('oi')}>
+                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => toggleSort('oi')}>
                   <span className="inline-flex items-center gap-1">Open Interest <ArrowDownUp className="h-3 w-3" /></span>
                 </th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-[#ffb02e]" onClick={() => toggleSort('funding')}>
+                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => toggleSort('funding')}>
                   <span className="inline-flex items-center gap-1">Funding (1h) <ArrowDownUp className="h-3 w-3" /></span>
                 </th>
                 <th className="py-3 px-2 text-right">Max Lev</th>
-                <th className="py-3 pl-2 pr-4 text-right cursor-pointer hover:text-[#ffb02e]" onClick={() => toggleSort('positions')}>
+                <th className="py-3 pl-2 pr-4 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => toggleSort('positions')}>
                   Indexed Pos
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 tabular-nums">
+            <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 tabular-nums">
               {loading && (
                 <tr>
-                  <td colSpan={9} className="py-10 text-center text-slate-400">
+                  <td colSpan={9} className="py-10 text-center text-slate-500 dark:text-slate-400">
                     Loading RISEx markets…
                   </td>
                 </tr>
@@ -212,18 +219,18 @@ export const MarketsPage: React.FC<{
                     <tr
                       key={m.market_id}
                       onClick={() => onSelectMarket(String(m.market_id))}
-                      className="cursor-pointer hover:bg-[#131c31]/70 transition-colors"
+                      className="cursor-pointer hover:bg-slate-100/80 dark:hover:bg-[#131c31]/70 transition-colors"
                     >
                       <td className="py-3 pl-4 pr-2">
                         <div className="flex items-center gap-2.5">
                           <TokenBadge symbol={m.base_asset_symbol} category={m.category} size={26} />
                           <div>
                             <div className="flex items-center gap-1.5">
-                              <span className="font-display text-sm font-semibold text-[#e8edfb]">
+                              <span className="font-display text-sm font-semibold text-slate-900 dark:text-[#e8edfb]">
                                 {m.display_name}
                               </span>
                               {m.is_new && (
-                                <span className="rounded bg-[#ffb02e]/20 px-1 py-0.5 text-[9px] font-mono font-bold text-[#ffb02e]">
+                                <span className="rounded bg-amber-500/15 dark:bg-[#ffb02e]/20 px-1 py-0.5 text-[9px] font-mono font-bold text-amber-700 dark:text-[#ffb02e]">
                                   NEW
                                 </span>
                               )}
@@ -234,45 +241,45 @@ export const MarketsPage: React.FC<{
                           </div>
                         </div>
                       </td>
-                      <td className="py-3 px-2 text-right font-mono font-medium text-[#e8edfb]">
+                      <td className="py-3 px-2 text-right font-mono font-medium text-slate-900 dark:text-[#e8edfb]">
                         {formatPrice(mark)}
                       </td>
                       <td
                         className={`py-3 px-2 text-right font-mono font-semibold ${
-                          chg >= 0 ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'
+                          chg >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'
                         }`}
                       >
                         {formatPct(chg)}
                       </td>
                       <td className="py-3 px-2">
                         <div className="flex justify-center">
-                          <MarketMoveMeter changePct={chg} width={64} height={22} />
+                          <MarketMiniChart series={miniCharts[String(m.market_id)]} changePct={chg} width={64} height={22} />
                         </div>
                       </td>
-                      <td className="py-3 px-2 text-right font-mono text-slate-200">
+                      <td className="py-3 px-2 text-right font-mono text-slate-700 dark:text-slate-200">
                         {formatUsd(m.quote_volume_24h, true)}
                       </td>
-                      <td className="py-3 px-2 text-right font-mono text-[#ffb02e]">
+                      <td className="py-3 px-2 text-right font-mono text-amber-600 dark:text-[#ffb02e]">
                         {formatUsd(oiUsd, true)}
                       </td>
                       <td
                         className={`py-3 px-2 text-right font-mono ${
-                          fundingPct >= 0 ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'
+                          fundingPct >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'
                         }`}
                       >
                         {fundingPct >= 0 ? '+' : ''}
                         {fundingPct.toFixed(4)}%
                       </td>
-                      <td className="py-3 px-2 text-right font-mono text-slate-300">
+                      <td className="py-3 px-2 text-right font-mono text-slate-600 dark:text-slate-300">
                         {m.config?.max_leverage || '—'}x
                       </td>
                       <td className="py-3 pl-2 pr-4 text-right font-mono">
                         {m.indexedStats && m.indexedStats.count > 0 ? (
-                          <span className="rounded bg-[#46a6ff]/15 px-2 py-0.5 text-[11px] text-[#46a6ff]">
+                          <span className="rounded bg-blue-500/12 dark:bg-[#46a6ff]/15 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:text-[#46a6ff]">
                             {m.indexedStats.count}
                           </span>
                         ) : (
-                          <span className="text-slate-600">0</span>
+                          <span className="text-slate-400 dark:text-slate-600">0</span>
                         )}
                       </td>
                     </tr>
@@ -280,7 +287,7 @@ export const MarketsPage: React.FC<{
                 })}
               {!loading && filteredAndSorted.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-400">
+                  <td colSpan={9} className="py-12 text-center text-slate-500 dark:text-slate-400">
                     No RISEx markets match the active search or category filter.
                   </td>
                 </tr>

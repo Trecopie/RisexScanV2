@@ -64,6 +64,7 @@ export function selectIndexerQueue(
 ): string[] {
   const prioritySet = new Set<string>();
   const stalePriorityEntries: { addr: string; tier: number; lastUpdated: number; score: number }[] = [];
+  const emptyRetryMs = Math.max(priorityFreshMs * 12, 6 * 3_600_000);
 
   for (const addr of priorityList) {
     const key = addr.toLowerCase();
@@ -71,12 +72,17 @@ export function selectIndexerQueue(
     prioritySet.add(key);
 
     const t = tradersMap.get(key);
-    const isStale = !t || !t.portfolioEnriched || nowMs - t.lastUpdated > priorityFreshMs;
+    const isEmptyAttemptedRecently =
+      Boolean(t && !t.portfolioEnriched && t.lastUpdated > 0 && nowMs - t.lastUpdated <= emptyRetryMs);
+    if (isEmptyAttemptedRecently) continue;
+
+    const isNeverAttempted = !t || (!t.portfolioEnriched && t.lastUpdated <= 0);
+    const isStale = isNeverAttempted || nowMs - t.lastUpdated > priorityFreshMs;
     if (!isStale) continue;
 
     let tier = 2;
-    if (!t || !t.portfolioEnriched) tier = 0;
-    else if (t.lastUpdated <= 0) tier = 1;
+    if (isNeverAttempted) tier = 0;
+    else if (t && t.lastUpdated <= 0) tier = 1;
 
     const score = t ? Math.max(t.volumeAll || 0, Math.abs(t.realizedPnlAll || 0)) : 0;
     stalePriorityEntries.push({
@@ -98,9 +104,14 @@ export function selectIndexerQueue(
     const key = t.address.toLowerCase();
     if (prioritySet.has(key)) continue;
 
+    if (!t.portfolioEnriched && t.lastUpdated > 0 && nowMs - t.lastUpdated <= emptyRetryMs) {
+      continue;
+    }
+
     let tier = 2;
     if (t.portfolioEnriched && t.lastUpdated <= 0) tier = 0;
-    else if (!t.portfolioEnriched) tier = 1;
+    else if (!t.portfolioEnriched && t.lastUpdated <= 0) tier = 1;
+    else if (!t.portfolioEnriched) tier = 3;
 
     backfillEntries.push({
       addr: t.address,

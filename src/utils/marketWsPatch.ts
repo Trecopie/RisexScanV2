@@ -74,10 +74,14 @@ export function parseOracleWei(raw: unknown): number | undefined {
   return price !== null && price > 0 ? price : undefined;
 }
 
-/** RISEx WebSocket L2 price and quantity fields are *both* 18-decimal wei
- * integers. Do not reuse the decimal-string REST/trades decoding path here. */
-function decodeOrderbookWei(raw: unknown): number | null {
-  return decodeUnsignedWei(raw);
+/** RISEx WebSocket L2 price and quantity fields arrive as decimal strings
+ * (while oracle prices remain 18-decimal integer wei strings). */
+function decodeOrderbookDecimal(raw: unknown): number | null {
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (!/^\d+(?:\.\d+)?$/.test(trimmed)) return null;
+  const result = Number(trimmed);
+  return Number.isFinite(result) && result >= 0 ? result : null;
 }
 
 function parseBookLevels(raw: unknown): { price: number; quantity: number }[] {
@@ -86,8 +90,8 @@ function parseBookLevels(raw: unknown): { price: number; quantity: number }[] {
   for (const item of raw) {
     if (!item || typeof item !== 'object') continue;
     const value = item as Record<string, unknown>;
-    const price = decodeOrderbookWei(value.price);
-    const quantity = decodeOrderbookWei(value.quantity ?? value.size);
+    const price = decodeOrderbookDecimal(value.price);
+    const quantity = decodeOrderbookDecimal(value.quantity ?? value.size);
     if (price !== null && price > 0 && quantity !== null) {
       // A zero quantity is valid: it removes a level on incremental updates.
       out.push({ price, quantity });

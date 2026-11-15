@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 import type { MarketCandle, ChartPoint, PnlCalendarDay } from '../types/risex';
 import { formatDateOnly, formatDateTime, formatPrice, formatSignedUsd, formatUsd, nsToMs } from '../utils/format';
 import { buildUtcMonthCalendar } from '../utils/portfolioCurves';
@@ -9,12 +10,13 @@ export const CandlestickChart: React.FC<{
   height?: number;
   mode?: 'candle' | 'line';
 }> = ({ candles, height = 340, mode = 'candle' }) => {
+  const { isDark } = useTheme();
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   if (!candles || candles.length === 0) {
     return (
       <div
-        className="flex items-center justify-center rounded-xl border border-slate-800/80 bg-[#090e1a] text-xs text-slate-400"
+        className="flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-500 dark:border-slate-800/80 dark:bg-[#090e1a] dark:text-slate-400"
         style={{ height }}
       >
         No candle data available for this interval.
@@ -56,21 +58,24 @@ export const CandlestickChart: React.FC<{
   const lastX = padL + (candles.length - 1) * stepX + stepX / 2;
   const areaPath = `${linePath} L ${lastX.toFixed(1)} ${lineBaseY.toFixed(1)} L ${firstX.toFixed(1)} ${lineBaseY.toFixed(1)} Z`;
 
+  const upCol = isDark ? '#22e0a1' : '#059669';
+  const downCol = isDark ? '#ff4d6d' : '#e11d48';
+  const accentCol = isDark ? '#ffb02e' : '#d97706';
+
   return (
-    <div className="relative select-none rounded-xl border border-slate-800/80 bg-[#090e1a] p-3">
-      {/* Top OHLCV readout */}
-      <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono tabular-nums text-slate-400">
-        <span className="text-slate-300">{formatDateTime(activeCandle.time)}</span>
-        <span>O: <strong className="text-[#e8edfb]">{formatPrice(activeCandle.open)}</strong></span>
-        <span>H: <strong className="text-[#22e0a1]">{formatPrice(activeCandle.high)}</strong></span>
-        <span>L: <strong className="text-[#ff4d6d]">{formatPrice(activeCandle.low)}</strong></span>
+    <div className="relative select-none rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800/80 dark:bg-[#090e1a]">
+      <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono tabular-nums text-slate-500 dark:text-slate-400">
+        <span className="text-slate-700 dark:text-slate-300">{formatDateTime(activeCandle.time)}</span>
+        <span>O: <strong className="text-slate-900 dark:text-[#e8edfb]">{formatPrice(activeCandle.open)}</strong></span>
+        <span>H: <strong className="text-emerald-600 dark:text-[#22e0a1]">{formatPrice(activeCandle.high)}</strong></span>
+        <span>L: <strong className="text-rose-600 dark:text-[#ff4d6d]">{formatPrice(activeCandle.low)}</strong></span>
         <span>
           C:{' '}
-          <strong className={activeCandle.close >= activeCandle.open ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'}>
+          <strong className={activeCandle.close >= activeCandle.open ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'}>
             {formatPrice(activeCandle.close)}
           </strong>
         </span>
-        <span>Vol: <strong className="text-[#ffb02e]">{activeCandle.volume.toFixed(3)}</strong></span>
+        <span>Vol: <strong className="text-amber-600 dark:text-[#ffb02e]">{activeCandle.volume.toFixed(3)}</strong></span>
       </div>
 
       <svg
@@ -80,18 +85,25 @@ export const CandlestickChart: React.FC<{
       >
         <defs>
           <linearGradient id="candleLineGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#ffb02e" stopOpacity="0.28" />
-            <stop offset="100%" stopColor="#ffb02e" stopOpacity="0.01" />
+            <stop offset="0%" stopColor={accentCol} stopOpacity="0.28" />
+            <stop offset="100%" stopColor={accentCol} stopOpacity="0.01" />
           </linearGradient>
         </defs>
 
-        {/* Gridlines & Price Axis */}
         {yTicks.map((tick, idx) => {
           const y = yPrice(tick);
           return (
             <g key={idx}>
-              <line x1={padL} x2={width - padR} y1={y} y2={y} stroke="rgba(148,163,205,0.12)" strokeDasharray="3 3" strokeWidth={1} />
-              <text x={width - padR + 8} y={y + 4} fill="#95a3c5" fontSize="10" fontFamily="JetBrains Mono, monospace">
+              <line
+                x1={padL}
+                x2={width - padR}
+                y1={y}
+                y2={y}
+                stroke={isDark ? 'rgba(148,163,205,0.12)' : 'rgba(15,23,42,0.08)'}
+                strokeDasharray="3 3"
+                strokeWidth={1}
+              />
+              <text x={width - padR + 8} y={y + 4} fill={isDark ? '#95a3c5' : '#64748b'} fontSize="10" fontFamily="JetBrains Mono, monospace">
                 {tick >= 1000 ? tick.toFixed(1) : tick >= 1 ? tick.toFixed(2) : tick.toPrecision(4)}
               </text>
             </g>
@@ -101,15 +113,14 @@ export const CandlestickChart: React.FC<{
         {mode === 'line' && (
           <>
             <path d={areaPath} fill="url(#candleLineGrad)" />
-            <path d={linePath} fill="none" stroke="#ffb02e" strokeWidth={2} />
+            <path d={linePath} fill="none" stroke={accentCol} strokeWidth={2} />
           </>
         )}
 
-        {/* Candles + Volume */}
         {candles.map((c, i) => {
           const xCenter = padL + i * stepX + stepX / 2;
           const isUp = c.close >= c.open;
-          const color = isUp ? '#22e0a1' : '#ff4d6d';
+          const color = isUp ? upCol : downCol;
           const yTop = yPrice(Math.max(c.open, c.close));
           const yBot = yPrice(Math.min(c.open, c.close));
           const bodyH = Math.max(1.5, yBot - yTop);
@@ -130,7 +141,6 @@ export const CandlestickChart: React.FC<{
           );
         })}
 
-        {/* Crosshair */}
         {hoverIdx !== null && candles[hoverIdx] && (
           <g pointerEvents="none">
             <line
@@ -138,7 +148,7 @@ export const CandlestickChart: React.FC<{
               x2={padL + hoverIdx * stepX + stepX / 2}
               y1={padT}
               y2={padT + chartH}
-              stroke="#ffb02e"
+              stroke={accentCol}
               strokeOpacity={0.55}
               strokeDasharray="3 3"
               strokeWidth={1}
@@ -148,7 +158,7 @@ export const CandlestickChart: React.FC<{
               x2={width - padR}
               y1={yPrice(candles[hoverIdx].close)}
               y2={yPrice(candles[hoverIdx].close)}
-              stroke="#ffb02e"
+              stroke={accentCol}
               strokeOpacity={0.55}
               strokeDasharray="3 3"
               strokeWidth={1}
@@ -156,7 +166,6 @@ export const CandlestickChart: React.FC<{
           </g>
         )}
 
-        {/* X Axis timestamps */}
         {[0, Math.floor(candles.length / 2), candles.length - 1].map((idx) => {
           const c = candles[idx];
           if (!c) return null;
@@ -166,7 +175,7 @@ export const CandlestickChart: React.FC<{
               key={idx}
               x={x}
               y={height - 10}
-              fill="#5d6987"
+              fill="#64748b"
               fontSize="10"
               textAnchor={idx === 0 ? 'start' : idx === candles.length - 1 ? 'end' : 'middle'}
               fontFamily="JetBrains Mono, monospace"
@@ -186,6 +195,7 @@ export const AreaPerformanceChart: React.FC<{
   height?: number;
   signed?: boolean;
 }> = ({ points, label, height = 240, signed = true }) => {
+  const { isDark } = useTheme();
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   const parsed = (points || [])
@@ -196,7 +206,7 @@ export const AreaPerformanceChart: React.FC<{
   if (parsed.length === 0) {
     return (
       <div
-        className="flex items-center justify-center rounded-xl border border-slate-800/80 bg-[#090e1a] text-xs text-slate-400"
+        className="flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-500 dark:border-slate-800/80 dark:bg-[#090e1a] dark:text-slate-400"
         style={{ height }}
       >
         No historical {label.toLowerCase()} points recorded for this period.
@@ -238,7 +248,9 @@ export const AreaPerformanceChart: React.FC<{
 
   const lastVal = parsed[parsed.length - 1].value;
   const isPositive = signed ? lastVal >= 0 : lastVal >= parsed[0].value;
-  const strokeColor = isPositive ? '#22e0a1' : '#ff4d6d';
+  const strokeColor = isPositive
+    ? isDark ? '#22e0a1' : '#059669'
+    : isDark ? '#ff4d6d' : '#e11d48';
 
   const linePath = parsed
     .map((p, i) => `${i === 0 ? 'M' : 'L'} ${getX(i).toFixed(1)} ${getY(p.value).toFixed(1)}`)
@@ -250,12 +262,12 @@ export const AreaPerformanceChart: React.FC<{
   const gradId = `grad-${label.replace(/[^a-zA-Z0-9]/g, '')}`;
 
   return (
-    <div className="rounded-xl border border-slate-800/80 bg-[#090e1a] p-3">
+    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800/80 dark:bg-[#090e1a]">
       <div className="mb-2 flex items-center justify-between text-xs">
-        <span className="text-slate-400">
-          {label} · <span className="font-mono text-slate-300">{formatDateOnly(activePoint.time)}</span>
+        <span className="text-slate-500 dark:text-slate-400">
+          {label} · <span className="font-mono text-slate-700 dark:text-slate-300">{formatDateOnly(activePoint.time)}</span>
         </span>
-        <span className={`font-mono font-semibold tabular-nums ${activePoint.value >= 0 ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'}`}>
+        <span className={`font-mono font-semibold tabular-nums ${activePoint.value >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'}`}>
           {signed ? formatSignedUsd(activePoint.value) : formatUsd(activePoint.value)}
         </span>
       </div>
@@ -263,7 +275,7 @@ export const AreaPerformanceChart: React.FC<{
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto block" onMouseLeave={() => setHoverIdx(null)}>
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={strokeColor} stopOpacity="0.28" />
+            <stop offset="0%" stopColor={strokeColor} stopOpacity={isDark ? '0.28' : '0.22'} />
             <stop offset="100%" stopColor={strokeColor} stopOpacity="0.02" />
           </linearGradient>
         </defs>
@@ -274,8 +286,8 @@ export const AreaPerformanceChart: React.FC<{
           const y = getY(val);
           return (
             <g key={idx}>
-              <line x1={padL} x2={width - padR} y1={y} y2={y} stroke="rgba(148,163,205,0.12)" strokeDasharray="3 3" />
-              <text x={width - padR + 8} y={y + 4} fill="#95a3c5" fontSize="10" fontFamily="JetBrains Mono, monospace">
+              <line x1={padL} x2={width - padR} y1={y} y2={y} stroke={isDark ? 'rgba(148,163,205,0.12)' : 'rgba(15,23,42,0.08)'} strokeDasharray="3 3" />
+              <text x={width - padR + 8} y={y + 4} fill={isDark ? '#95a3c5' : '#64748b'} fontSize="10" fontFamily="JetBrains Mono, monospace">
                 {formatUsd(cleanTick, true)}
               </text>
             </g>
@@ -283,7 +295,7 @@ export const AreaPerformanceChart: React.FC<{
         })}
 
         {signed && minVal < 0 && maxVal > 0 && (
-          <line x1={padL} x2={width - padR} y1={getY(0)} y2={getY(0)} stroke="rgba(148,163,205,0.3)" strokeWidth={1} />
+          <line x1={padL} x2={width - padR} y1={getY(0)} y2={getY(0)} stroke={isDark ? 'rgba(148,163,205,0.3)' : 'rgba(15,23,42,0.22)'} strokeWidth={1} />
         )}
 
         <path d={areaPath} fill={`url(#${gradId})`} />
@@ -316,11 +328,11 @@ export const AreaPerformanceChart: React.FC<{
               x2={getX(hoverIdx)}
               y1={padT}
               y2={padT + cH}
-              stroke="#ffb02e"
+              stroke={isDark ? '#ffb02e' : '#d97706'}
               strokeOpacity={0.6}
               strokeDasharray="3 3"
             />
-            <circle cx={getX(hoverIdx)} cy={getY(parsed[hoverIdx].value)} r={4} fill={strokeColor} stroke="#05070d" strokeWidth={1.5} />
+            <circle cx={getX(hoverIdx)} cy={getY(parsed[hoverIdx].value)} r={4} fill={strokeColor} stroke={isDark ? '#05070d' : '#ffffff'} strokeWidth={1.5} />
           </g>
         )}
 
@@ -332,7 +344,7 @@ export const AreaPerformanceChart: React.FC<{
               key={idx}
               x={getX(idx)}
               y={height - 8}
-              fill="#5d6987"
+              fill="#64748b"
               fontSize="10"
               textAnchor={idx === 0 ? 'start' : 'end'}
               fontFamily="JetBrains Mono, monospace"
@@ -350,12 +362,13 @@ export const DailyBars30D: React.FC<{
   items: { label: string; value: number }[];
   height?: number;
 }> = ({ items, height = 160 }) => {
+  const { isDark } = useTheme();
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
 
   if (!items || items.length === 0) {
     return (
       <div
-        className="flex items-center justify-center rounded-xl border border-slate-800/80 bg-[#090e1a] text-xs text-slate-400"
+        className="flex items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-500 dark:border-slate-800/80 dark:bg-[#090e1a] dark:text-slate-400"
         style={{ height }}
       >
         No daily closed-trade PnL bars in this filter window.
@@ -376,20 +389,20 @@ export const DailyBars30D: React.FC<{
   const active = hoverIdx !== null ? items[hoverIdx] : items[items.length - 1];
 
   return (
-    <div className="rounded-xl border border-slate-800/80 bg-[#090e1a] p-3">
+    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800/80 dark:bg-[#090e1a]">
       <div className="mb-2 flex items-center justify-between text-xs">
-        <span className="text-slate-400">Daily Realized PnL Distribution ({items.length} days)</span>
-        <span className={`font-mono font-semibold tabular-nums ${active.value >= 0 ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'}`}>
+        <span className="text-slate-500 dark:text-slate-400">Daily Realized PnL Distribution ({items.length} days)</span>
+        <span className={`font-mono font-semibold tabular-nums ${active.value >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'}`}>
           {active.label}: {formatSignedUsd(active.value)}
         </span>
       </div>
       <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto block" onMouseLeave={() => setHoverIdx(null)}>
-        <line x1={padX} x2={width - padX} y1={midY} y2={midY} stroke="rgba(148,163,205,0.25)" strokeWidth={1} />
+        <line x1={padX} x2={width - padX} y1={midY} y2={midY} stroke={isDark ? 'rgba(148,163,205,0.25)' : 'rgba(15,23,42,0.18)'} strokeWidth={1} />
         {items.map((d, i) => {
           const h = Math.max(2, (Math.abs(d.value) / maxAbs) * (cH / 2 - 4));
           const x = padX + i * stepW + (stepW - barW) / 2;
           const y = d.value >= 0 ? midY - h : midY;
-          const color = d.value >= 0 ? '#22e0a1' : '#ff4d6d';
+          const color = d.value >= 0 ? (isDark ? '#22e0a1' : '#059669') : (isDark ? '#ff4d6d' : '#e11d48');
           return (
             <g key={i} onMouseEnter={() => setHoverIdx(i)}>
               <rect x={padX + i * stepW} y={padY} width={stepW} height={cH} fill="transparent" />
@@ -400,7 +413,7 @@ export const DailyBars30D: React.FC<{
                 height={h}
                 rx={1.5}
                 fill={color}
-                opacity={hoverIdx === i ? 1 : 0.8}
+                opacity={hoverIdx === i ? 1 : 0.85}
               />
             </g>
           );
@@ -414,6 +427,7 @@ export const PnlCalendarHeatmap: React.FC<{
   days: PnlCalendarDay[];
   winDays?: number;
 }> = ({ days }) => {
+  const { isDark } = useTheme();
   const [selectedMonth, setSelectedMonth] = useState<string | undefined>(undefined);
   const [hovered, setHovered] = useState<{ dateKey: string; pnl: number } | null>(null);
 
@@ -426,7 +440,7 @@ export const PnlCalendarHeatmap: React.FC<{
 
   if (!days || days.length === 0) {
     return (
-      <div className="flex h-[240px] items-center justify-center rounded-xl border border-slate-800/80 bg-[#090e1a] text-xs text-slate-400">
+      <div className="flex h-[240px] items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-500 dark:border-slate-800/80 dark:bg-[#090e1a] dark:text-slate-400">
         No daily PnL calendar records for this wallet.
       </div>
     );
@@ -437,20 +451,20 @@ export const PnlCalendarHeatmap: React.FC<{
   const canNext = curIdx >= 0 && curIdx < cal.availableMonths.length - 1;
 
   return (
-    <div className="rounded-xl border border-slate-800/80 bg-[#090e1a] p-3 space-y-3">
+    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-3 dark:border-slate-800/80 dark:bg-[#090e1a]">
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded-lg border border-slate-800 bg-[#060913] px-1 py-0.5">
+          <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-1 py-0.5 dark:border-slate-800 dark:bg-[#060913]">
             <button
               type="button"
               aria-label="Previous month"
               disabled={!canPrev}
               onClick={() => canPrev && setSelectedMonth(cal.availableMonths[curIdx - 1])}
-              className="rounded p-1 text-slate-300 hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none"
+              className="rounded p-1 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
-            <span className="min-w-[74px] text-center font-mono text-[11px] font-semibold text-[#e8edfb]">
+            <span className="min-w-[74px] text-center font-mono text-[11px] font-semibold text-slate-900 dark:text-[#e8edfb]">
               {cal.monthLabel}
             </span>
             <button
@@ -458,17 +472,17 @@ export const PnlCalendarHeatmap: React.FC<{
               aria-label="Next month"
               disabled={!canNext}
               onClick={() => canNext && setSelectedMonth(cal.availableMonths[curIdx + 1])}
-              className="rounded p-1 text-slate-300 hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none"
+              className="rounded p-1 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none"
             >
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
           </div>
-          <span className="text-[11px] text-slate-400">
-            <span className="font-mono text-slate-200">
+          <span className="text-[11px] text-slate-500 dark:text-slate-400">
+            <span className="font-mono text-slate-800 dark:text-slate-200">
               {cal.monthWinDays}/{cal.monthActiveDays}
             </span>{' '}
             win days · All:{' '}
-            <span className="font-mono text-slate-300">
+            <span className="font-mono text-slate-700 dark:text-slate-300">
               {cal.allTimeWinDays}/{cal.allTimeActiveDays}
             </span>
           </span>
@@ -476,7 +490,7 @@ export const PnlCalendarHeatmap: React.FC<{
 
         <span
           className={`font-mono font-semibold tabular-nums ${
-            (hovered ? hovered.pnl : cal.monthTotalPnl) >= 0 ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'
+            (hovered ? hovered.pnl : cal.monthTotalPnl) >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'
           }`}
         >
           {hovered
@@ -485,7 +499,6 @@ export const PnlCalendarHeatmap: React.FC<{
         </span>
       </div>
 
-      {/* UTC Weekday Headers */}
       <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-mono uppercase tracking-wider text-slate-500">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((w) => (
           <div key={w} className="py-0.5">
@@ -494,7 +507,6 @@ export const PnlCalendarHeatmap: React.FC<{
         ))}
       </div>
 
-      {/* Aligned UTC Month Grid */}
       <div className="grid grid-cols-7 gap-1">
         {Array.from({ length: cal.firstWeekday }).map((_, idx) => (
           <div key={`blank-${idx}`} className="h-11 rounded-lg bg-transparent" />
@@ -505,21 +517,27 @@ export const PnlCalendarHeatmap: React.FC<{
             return (
               <div
                 key={cell.dateKey}
-                className="flex h-11 flex-col items-center justify-center rounded-lg border border-slate-800/40 bg-[#0d1424]/60 px-1 text-slate-600"
+                className="flex h-11 flex-col items-center justify-center rounded-lg border border-slate-200/80 bg-white/70 px-1 text-slate-400 dark:border-slate-800/40 dark:bg-[#0d1424]/60 dark:text-slate-600"
               >
                 <span className="text-[10px] font-mono">{cell.dayNumber}</span>
-                <span className="text-[9px] font-mono text-slate-700">—</span>
+                <span className="text-[9px] font-mono text-slate-300 dark:text-slate-700">—</span>
               </div>
             );
           }
 
-          const intensity = Math.min(0.88, Math.max(0.22, Math.abs(cell.pnl) / cal.maxAbsMonth));
+          const intensity = Math.min(0.85, Math.max(0.24, Math.abs(cell.pnl) / cal.maxAbsMonth));
           const bg =
             cell.pnl > 0
-              ? `rgba(34, 224, 161, ${intensity.toFixed(2)})`
+              ? isDark
+                ? `rgba(34, 224, 161, ${intensity.toFixed(2)})`
+                : `rgba(16, 185, 129, ${(0.18 + intensity * 0.55).toFixed(2)})`
               : cell.pnl < 0
-                ? `rgba(255, 77, 109, ${intensity.toFixed(2)})`
-                : 'rgba(51, 65, 85, 0.35)';
+                ? isDark
+                  ? `rgba(255, 77, 109, ${intensity.toFixed(2)})`
+                  : `rgba(244, 63, 94, ${(0.18 + intensity * 0.55).toFixed(2)})`
+                : isDark
+                  ? 'rgba(51, 65, 85, 0.35)'
+                  : 'rgba(226, 232, 240, 0.8)';
 
           const compactPnl =
             cell.pnl === 0
@@ -535,11 +553,11 @@ export const PnlCalendarHeatmap: React.FC<{
               key={cell.dateKey}
               onMouseEnter={() => setHovered({ dateKey: cell.dateKey, pnl: cell.pnl! })}
               onMouseLeave={() => setHovered(null)}
-              className="flex h-11 flex-col items-center justify-center rounded-lg border border-slate-800/80 px-1 transition-transform hover:scale-[1.03] cursor-default"
+              className="flex h-11 flex-col items-center justify-center rounded-lg border border-slate-300/60 dark:border-slate-800/80 px-1 transition-transform hover:scale-[1.03] cursor-default"
               style={{ backgroundColor: bg }}
             >
-              <span className="text-[10px] font-mono text-slate-100/85">{cell.dayNumber}</span>
-              <span className="text-[10px] font-mono font-semibold tabular-nums text-white truncate max-w-full">
+              <span className="text-[10px] font-mono text-slate-700 dark:text-slate-100/85">{cell.dayNumber}</span>
+              <span className="text-[10px] font-mono font-semibold tabular-nums text-slate-950 dark:text-white truncate max-w-full">
                 {compactPnl}
               </span>
             </div>
@@ -564,43 +582,38 @@ export const LongShortBiasBar: React.FC<{
     <div className="sunrise-card rounded-xl p-4">
       <div className="mb-2 flex items-center justify-between text-xs">
         <div className="font-mono tabular-nums">
-          <span className="text-[#22e0a1] font-semibold">LONG {longPct.toFixed(1)}%</span>
-          <span className="text-slate-400 ml-2">
+          <span className="text-emerald-600 dark:text-[#22e0a1] font-semibold">LONG {longPct.toFixed(1)}%</span>
+          <span className="text-slate-500 dark:text-slate-400 ml-2">
             {formatUsd(longNotional, true)} · {longCount} traders
           </span>
         </div>
         <div className="font-mono tabular-nums text-right">
-          <span className="text-slate-400 mr-2">
+          <span className="text-slate-500 dark:text-slate-400 mr-2">
             {shortCount} traders · {formatUsd(shortNotional, true)}
           </span>
-          <span className="text-[#ff4d6d] font-semibold">SHORT {shortPct.toFixed(1)}%</span>
+          <span className="text-rose-600 dark:text-[#ff4d6d] font-semibold">SHORT {shortPct.toFixed(1)}%</span>
         </div>
       </div>
-      <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-800/80">
-        <div className="bg-[#22e0a1] transition-all duration-200" style={{ width: `${longPct}%` }} />
-        <div className="bg-[#ff4d6d] transition-all duration-200" style={{ width: `${shortPct}%` }} />
+      <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800/80">
+        <div className="bg-emerald-500 dark:bg-[#22e0a1] transition-all duration-200" style={{ width: `${longPct}%` }} />
+        <div className="bg-rose-500 dark:bg-[#ff4d6d] transition-all duration-200" style={{ width: `${shortPct}%` }} />
       </div>
     </div>
   );
 };
 
-/**
- * Honest, compact 24h *change meter* (NOT a historical sparkline).
- * The position and width reflect the actual RISEx 24h % change. A time-series
- * line would require OHLCV history; never synthesize one from a ticker name.
- */
 export const MarketMoveMeter: React.FC<{
   changePct: number;
   width?: number;
   height?: number;
 }> = ({ changePct, width = 76, height = 24 }) => {
+  const { isDark } = useTheme();
   const pct = Number.isFinite(changePct) ? changePct : 0;
   const center = width / 2;
-  // A fixed scale is comparable across assets; the meter clips at ±25%.
   const range = 25;
   const extent = Math.min(center - 3, (Math.abs(pct) / range) * (center - 3));
   const positive = pct >= 0;
-  const color = positive ? '#22e0a1' : '#ff4d6d';
+  const color = positive ? (isDark ? '#22e0a1' : '#059669') : (isDark ? '#ff4d6d' : '#e11d48');
   const barWidth = pct === 0 ? 0 : Math.max(1.4, extent);
   const y = Math.max(2, (height - 7) / 2);
   const label = `24h change ${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%. Meter scale ±25%, clipped beyond that. Not historical price data.`;
@@ -615,8 +628,8 @@ export const MarketMoveMeter: React.FC<{
       aria-label={label}
     >
       <title>{label}</title>
-      <rect x={1} y={y} width={width - 2} height={7} rx={3.5} fill="#131c31" />
-      <line x1={center} y1={y - 2} x2={center} y2={y + 9} stroke="#8492ad" strokeWidth={1} />
+      <rect x={1} y={y} width={width - 2} height={7} rx={3.5} fill={isDark ? '#131c31' : '#e2e8f0'} />
+      <line x1={center} y1={y - 2} x2={center} y2={y + 9} stroke={isDark ? '#8492ad' : '#94a3b8'} strokeWidth={1} />
       {barWidth > 0 && (
         <rect
           x={positive ? center : center - barWidth}

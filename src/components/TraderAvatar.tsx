@@ -73,7 +73,7 @@ export const TraderAvatar: React.FC<{
         height={size}
         referrerPolicy="no-referrer"
         onError={() => setImgError(true)}
-        className={`shrink-0 rounded-lg object-cover border border-slate-700/70 bg-[#0e1526] ${className}`}
+        className={`shrink-0 rounded-lg object-cover border border-slate-200 bg-slate-100 dark:border-slate-700/70 dark:bg-[#0e1526] ${className}`}
         style={{ width: size, height: size }}
       />
     );
@@ -85,7 +85,7 @@ export const TraderAvatar: React.FC<{
       height={size}
       viewBox="0 0 5 5"
       shapeRendering="crispEdges"
-      className={`shrink-0 rounded-lg border border-slate-700/70 bg-[#0e1526] p-[3px] ${className}`}
+      className={`shrink-0 rounded-lg border border-slate-200 bg-slate-100 dark:border-slate-700/70 dark:bg-[#0e1526] p-[3px] ${className}`}
       style={{ width: size, height: size }}
       aria-label={username || address}
     >
@@ -118,25 +118,25 @@ export const LiqDistanceBadge: React.FC<{
 }> = ({ markPrice, liquidationPrice, side }) => {
   const dist = calcLiqDistancePct(markPrice, liquidationPrice, side);
   if (dist === null) {
-    return <span className="text-[10px] font-mono text-slate-500">—</span>;
+    return <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500">—</span>;
   }
   const clamped = Math.max(0, dist);
   if (clamped < 6) {
     return (
-      <span className="inline-flex items-center gap-1 rounded bg-[#ff4d6d]/15 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-[#ff4d6d] border border-[#ff4d6d]/30">
+      <span className="inline-flex items-center gap-1 rounded bg-rose-500/12 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-rose-700 border border-rose-500/30 dark:bg-[#ff4d6d]/15 dark:text-[#ff4d6d] dark:border-[#ff4d6d]/30">
         {clamped.toFixed(1)}% CRIT
       </span>
     );
   }
   if (clamped < 20) {
     return (
-      <span className="inline-flex items-center gap-1 rounded bg-[#ffb02e]/15 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-[#ffb02e] border border-[#ffb02e]/30">
+      <span className="inline-flex items-center gap-1 rounded bg-amber-500/12 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-amber-700 border border-amber-500/30 dark:bg-[#ffb02e]/15 dark:text-[#ffb02e] dark:border-[#ffb02e]/30">
         {clamped.toFixed(1)}% NEAR
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 rounded bg-[#22e0a1]/12 px-1.5 py-0.5 text-[10px] font-mono text-[#22e0a1] border border-[#22e0a1]/25">
+    <span className="inline-flex items-center gap-1 rounded bg-emerald-500/12 px-1.5 py-0.5 text-[10px] font-mono font-medium text-emerald-700 border border-emerald-500/25 dark:bg-[#22e0a1]/12 dark:text-[#22e0a1] dark:border-[#22e0a1]/25">
       {clamped.toFixed(1)}% SAFE
     </span>
   );
@@ -158,9 +158,9 @@ export const CopyBtn: React.FC<{ text: string; className?: string }> = ({ text, 
       type="button"
       onClick={handleCopy}
       title="Copy to clipboard"
-      className={`inline-flex items-center justify-center rounded p-1 text-slate-400 hover:bg-slate-800/80 hover:text-[#ffb02e] transition-colors ${className}`}
+      className={`inline-flex items-center justify-center rounded p-1 text-slate-500 hover:bg-slate-200/70 hover:text-amber-600 dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-[#ffb02e] transition-colors ${className}`}
     >
-      {copied ? <Check className="h-3.5 w-3.5 text-[#22e0a1]" /> : <Copy className="h-3.5 w-3.5" />}
+      {copied ? <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-[#22e0a1]" /> : <Copy className="h-3.5 w-3.5" />}
     </button>
   );
 };

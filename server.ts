@@ -13,11 +13,16 @@ import {
   normalizeCalendarAndPeriodMetrics,
   reconstructAccountEquitySeries,
 } from './src/utils/portfolioCurves.ts';
-import { buildCohortsAnalytics } from './src/utils/cohorts.ts';
+import { buildCohortsAnalytics, classifyTraderCohort } from './src/utils/cohorts.ts';
 import { computeProfitabilitySummary } from './src/utils/overviewAnalytics.ts';
 import { extractWalletAddressesFromLogs, selectIndexerQueue } from './src/utils/indexerQueue.ts';
 import { buildTraderSyncDiagnostic } from './src/utils/pnlDiagnostic.ts';
 import { LIQUIDATION_ALERT_PCT, LIQUIDATION_CANDIDATE_PCT, liquidationDistancePct } from './src/utils/liquidationRisk.ts';
+import { normalizeRpcBlocks } from './src/utils/liveChain.ts';
+import { HistoryStore, type ObservedTradeRecord } from './src/utils/historyStore.ts';
+import { matchesTraderQuery } from './src/utils/traderDisplay.ts';
+import { requireAuth, type AuthRequest } from './src/middleware/auth.ts';
+import { getOrCreateUser, getUserWatchlist, saveUserWatchlist } from './src/db/users.ts';
 
 dotenv.config();
 
@@ -126,8 +131,19 @@ interface TraderRecord {
 // In-memory store
 let marketsCache: any[] = [];
 let marketsUpdatedAt = 0;
+let lastMarketHistorySample = 0;
+let lastPositionHistorySample = 0;
 let systemConfigCache: any = null;
 const tradersMap = new Map<string, TraderRecord>();
+const historyStore = new HistoryStore();
+const changedTraders = new Set<string>();
+
+function putTrader(address: string, row: TraderRecord) {
+  const key = address.toLowerCase();
+  tradersMap.set(key, row);
+  changedTraders.add(key);
+}
+
 const customSearchedWallets = new Set<string>();
 let isIndexing = false;
 let lastIndexComplete = 0;
@@ -217,8 +233,12 @@ async function resolveAddressOrUsername(
   if (/^0x[a-fA-F0-9]{40}$/.test(clean)) {
     return { address: clean, traderProfile: null };
   }
+  const lower = clean.toLowerCase();
+  if (lower === 'risex vault' || lower === 'vault' || lower === 'protocol vault' || lower === 'mmadapter') {
+    return { address: '0x938a104179a2D23DeC249A968ecd5B4F8B857cac', traderProfile: null };
+  }
   const localMatch = Array.from(tradersMap.values()).find(
-    (t) => t.username && t.username.toLowerCase() === clean.toLowerCase()
+    (t) => t.username && t.username.toLowerCase() === lower
   );
   if (localMatch) {
     return { address: localMatch.address, traderProfile: null };
@@ -261,22 +281,75 @@ function loadDiskCache() {
   }
 }
 
+let persistQueue = Promise.resolve();
 function saveDiskCache() {
+  const metadata = {
+    cacheVersion: 3,
+    lastIndexComplete,
+    authCursor,
+    cmCursor,
+    authBackfillComplete,
+    cmBackfillComplete,
+  };
+  if (historyStore.ready) {
+    const dirtyKeys = [...changedTraders];
+    changedTraders.clear();
+    const records = dirtyKeys
+      .map((key) => tradersMap.get(key))
+      .filter((t): t is TraderRecord => Boolean(t));
+    persistQueue = persistQueue
+      .then(async () => {
+        await historyStore.upsertTraders(records);
+        await historyStore.saveState(metadata);
+      })
+      .catch((err) => {
+        for (const key of dirtyKeys) changedTraders.add(key);
+        console.error('Persistent index save failed:', err);
+      });
+  }
   try {
     const payload = {
-      cacheVersion: 3,
-      lastIndexComplete,
-      authCursor,
-      cmCursor,
-      authBackfillComplete,
-      cmBackfillComplete,
+      ...metadata,
       traders: Array.from(tradersMap.values()),
     };
     const tmpFile = `${CACHE_FILE}.tmp`;
     fs.writeFileSync(tmpFile, JSON.stringify(payload));
     fs.renameSync(tmpFile, CACHE_FILE);
   } catch {
-    // ignore write errors on ephemeral/read-only filesystems
+    // ignore write errors on ephemeral filesystems
+  }
+}
+
+async function restoreIndexFromCloudSql(): Promise<void> {
+  if (!historyStore.ready) return;
+  try {
+    const state = await historyStore.loadState();
+    if (state) {
+      if (Number(state.lastIndexComplete || 0) > lastIndexComplete) {
+        lastIndexComplete = Number(state.lastIndexComplete || 0);
+      }
+      if (state.authCursor) authCursor = state.authCursor;
+      if (state.cmCursor) cmCursor = state.cmCursor;
+      if (state.authBackfillComplete) authBackfillComplete = true;
+      if (state.cmBackfillComplete) cmBackfillComplete = true;
+    }
+    const count = await historyStore.loadTraders((rows) => {
+      for (const trader of rows) {
+        if (trader?.address) {
+          const k = String(trader.address).toLowerCase();
+          const existing = tradersMap.get(k);
+          if (!existing || safeNum(trader.lastUpdated) > safeNum(existing.lastUpdated)) {
+            tradersMap.set(k, trader as TraderRecord);
+          }
+        }
+      }
+    });
+    if (count === 0 && tradersMap.size > 0) {
+      for (const key of tradersMap.keys()) changedTraders.add(key);
+      saveDiskCache();
+    }
+  } catch (err) {
+    console.error('Cloud SQL restore warning:', err);
   }
 }
 
@@ -289,6 +362,24 @@ async function getMarkets(force = false): Promise<any[]> {
   if (list.length > 0) {
     marketsCache = list;
     marketsUpdatedAt = Date.now();
+    if (historyStore.ready && Date.now() - lastMarketHistorySample > 3_600_000) {
+      lastMarketHistorySample = Date.now();
+      const sampledAt = lastMarketHistorySample;
+      const samples = list
+        .filter((m: any) => m.active !== false)
+        .map((m: any) => ({
+          marketId: String(m.market_id),
+          observedAt: sampledAt,
+          openInterestUsd: safeNum(m.open_interest) * safeNum(m.mark_price || m.last_price),
+          volume24hUsd: safeNum(m.quote_volume_24h),
+          fundingRate: safeNum(m.current_funding_rate),
+          markPrice: safeNum(m.mark_price || m.last_price),
+        }));
+      historyStore.recordMarketSamples(samples).catch((err) => {
+        lastMarketHistorySample = 0;
+        console.error('Market sample persistence warning:', err);
+      });
+    }
   }
   return marketsCache;
 }
@@ -324,11 +415,12 @@ function seedDiscoveredTrader(
       existing.totalPnlAll = meta.realizedPnl;
     }
     if (!existing.sources.includes(meta.source)) existing.sources.push(meta.source);
+    changedTraders.add(key);
     return;
   }
 
   const rPnl = meta.realizedPnl ?? 0;
-  tradersMap.set(key, {
+  putTrader(key, {
     address: address.trim(),
     username: meta.username || null,
     avatarUrl: meta.avatarUrl || null,
@@ -390,7 +482,17 @@ async function enrichWallet(address: string, sourceTag: string): Promise<TraderR
     const [detailsRes, headerRes, statsRes, calRes, chart1DRes, profileRes] = await Promise.allSettled(calls);
 
     const details = detailsRes.status === 'fulfilled' ? detailsRes.value?.data : null;
-    if (!details || !details.summary) return null;
+    if (!details || !details.summary) {
+      const explicitEmpty =
+        detailsRes.status === 'fulfilled' ||
+        (detailsRes.status === 'rejected' &&
+          /^HTTP 40[04]:/.test(String(detailsRes.reason?.message || '')));
+      if (explicitEmpty && existing && !existing.portfolioEnriched) {
+        existing.lastUpdated = Date.now();
+        changedTraders.add(key);
+      }
+      return null;
+    }
 
     const summary = details.summary;
     const rawPositions: any[] = details.positions || [];
@@ -529,7 +631,7 @@ async function enrichWallet(address: string, sourceTag: string): Promise<TraderR
       sources,
     };
 
-    tradersMap.set(key, record);
+    putTrader(key, record);
     return record;
   } catch {
     return null;
@@ -757,7 +859,7 @@ async function discoverAllTraders() {
 
     // Historical sweep across all past Auth registrations (active + inactive wallets)
     if (!authBackfillComplete) {
-      for (let page = 0; page < 15; page++) {
+      for (let page = 0; page < 40; page++) {
         try {
           const nextP = await crawlAuthPage(authCursor, false);
           authCursor = nextP;
@@ -781,35 +883,119 @@ async function discoverAllTraders() {
   return priorityQueue;
 }
 
+function buildLiveCohortRows(capturedAt = Date.now()) {
+  const grouped = new Map<
+    string,
+    {
+      marketId: string;
+      cohort: 'whale' | 'shark' | 'dolphin' | 'fish' | 'shrimp';
+      observedAt: number;
+      longUsd: number;
+      shortUsd: number;
+      positions: number;
+    }
+  >();
+  for (const trader of tradersMap.values()) {
+    if (!trader.portfolioEnriched) continue;
+    const cohort = classifyTraderCohort(trader.accountValue, trader.totalNotional);
+    for (const pos of trader.positions) {
+      const key = `${pos.marketId}:${cohort}`;
+      const row = grouped.get(key) || {
+        marketId: pos.marketId,
+        cohort,
+        observedAt: capturedAt,
+        longUsd: 0,
+        shortUsd: 0,
+        positions: 0,
+      };
+      if (pos.side === 'LONG') row.longUsd += pos.notionalUsd;
+      else row.shortUsd += pos.notionalUsd;
+      row.positions++;
+      grouped.set(key, row);
+    }
+  }
+  return [...grouped.values()];
+}
+
+let cohortCaptureInProgress = false;
+const COHORT_CAPTURE_INTERVAL_MS = 5 * 60_000;
+async function captureCohortSnapshot(): Promise<void> {
+  if (
+    !historyStore.ready ||
+    cohortCaptureInProgress ||
+    Date.now() - lastPositionHistorySample < COHORT_CAPTURE_INTERVAL_MS
+  ) {
+    return;
+  }
+  cohortCaptureInProgress = true;
+  const capturedAt = Date.now();
+  try {
+    const rows = buildLiveCohortRows(capturedAt);
+    if (rows.length === 0) return;
+    await historyStore.recordCohortSnapshots(rows);
+    lastPositionHistorySample = capturedAt;
+  } catch (err) {
+    console.error('Cohort snapshot persistence warning:', err);
+  } finally {
+    cohortCaptureInProgress = false;
+  }
+}
+
 async function runBackgroundIndexer() {
   if (isIndexing) return;
   isIndexing = true;
+  let needsCatchUp = false;
   try {
     await getMarkets(true);
     const priorityList = await discoverAllTraders();
     const now = Date.now();
     const PRIORITY_FRESH_MS = 5 * 60 * 1000;
+    const unenrichedPendingBefore = Array.from(tradersMap.values()).filter(
+      (t) => !t.portfolioEnriched && t.lastUpdated <= 0
+    ).length;
+    const catchUpMode = unenrichedPendingBefore > 0 || !authBackfillComplete || !cmBackfillComplete;
 
     // Anti-starvation round-robin queue: unenriched active traders & legacy entries first, then oldest stale
-    const queue = selectIndexerQueue(priorityList, tradersMap, now, PRIORITY_FRESH_MS, 360, 220);
-    const BATCH_SIZE = 4;
+    const queue = selectIndexerQueue(
+      priorityList,
+      tradersMap,
+      now,
+      PRIORITY_FRESH_MS,
+      360,
+      catchUpMode ? 800 : 220
+    );
+    const BATCH_SIZE = catchUpMode ? 5 : 4;
+    const batchSleepMs = catchUpMode ? 350 : 1200;
+    const saveInterval = catchUpMode ? 80 : 40;
+
     for (let i = 0; i < queue.length; i += BATCH_SIZE) {
-      while (activeInteractiveRequests > 0) {
-        await new Promise((r) => setTimeout(r, 800));
+      for (let pause = 0; pause < 6 && activeInteractiveRequests > 0; pause++) {
+        await new Promise((r) => setTimeout(r, 500));
       }
       const batch = queue.slice(i, i + BATCH_SIZE);
       await Promise.allSettled(batch.map((addr) => enrichWallet(addr, 'indexer')));
       invalidateLeaderboardAndCohortCaches();
-      if (i % 40 === 0 && i > 0) saveDiskCache();
-      await new Promise((r) => setTimeout(r, 1200));
+      if (i > 0 && i % saveInterval === 0) saveDiskCache();
+      await new Promise((r) => setTimeout(r, batchSleepMs));
     }
 
     lastIndexComplete = Date.now();
+    await captureCohortSnapshot();
     saveDiskCache();
+
+    const remainingPending = Array.from(tradersMap.values()).filter(
+      (t) => !t.portfolioEnriched && t.lastUpdated <= 0
+    ).length;
+    needsCatchUp = remainingPending > 0 || !authBackfillComplete || !cmBackfillComplete;
   } catch (err) {
     console.error('Indexer cycle warning:', err);
   } finally {
     isIndexing = false;
+    if (needsCatchUp) {
+      setTimeout(() => {
+        void runBackgroundIndexer();
+      }, 5000);
+    }
   }
 }
 
@@ -1035,6 +1221,204 @@ async function getRecentMarketTrades() {
   });
 }
 
+async function getRisexHistoricalAnalytics() {
+  return cachedCallSWR(
+    'analytics:historical:v1',
+    300_000,
+    900_000,
+    async () => {
+      const [markets, oiRes] = await Promise.all([
+        getMarkets().catch(() => []),
+        fetchJson('https://api.llama.fi/overview/open-interest?excludeTotalDataChart=false', {}, 12_000, 1).catch(() => null),
+      ]);
+
+      // 1. DefiLlama 194-day Open Interest history for RISEx
+      const oiMap = new Map<number, number>();
+      const breakdown = Array.isArray(oiRes?.totalDataChartBreakdown) ? oiRes.totalDataChartBreakdown : [];
+      for (const row of breakdown) {
+        if (!Array.isArray(row) || row.length < 2) continue;
+        const tsSec = safeNum(row[0]);
+        const obj = row[1];
+        const val = safeNum(obj?.RISEx ?? obj?.risex);
+        if (tsSec > 0 && val > 0) {
+          const dayMs = Math.floor((tsSec * 1000) / 86_400_000) * 86_400_000;
+          oiMap.set(dayMs, val);
+        }
+      }
+
+      // Overlay current live RISEx OI for today's UTC day
+      const activeMarkets = markets.filter((m: any) => m.active !== false);
+      const liveTotalOi = activeMarkets.reduce(
+        (sum: number, m: any) => sum + safeNum(m.open_interest) * safeNum(m.mark_price || m.last_price),
+        0
+      );
+      if (liveTotalOi > 0) {
+        const todayMs = Math.floor(Date.now() / 86_400_000) * 86_400_000;
+        oiMap.set(todayMs, liveTotalOi);
+      }
+
+      const oiHistory = [...oiMap.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([time, value]) => ({ time, value }));
+
+      // 2. RISEx 1D OHLCV candles across active markets for Daily & Cumulative Volume
+      const now = Date.now();
+      const toNs = (BigInt(now) * 1_000_000n).toString();
+      const fromNs = (BigInt(now - 240 * 86_400_000) * 1_000_000n).toString();
+      const dailyVolMap = new Map<number, number>();
+
+      for (let offset = 0; offset < activeMarkets.length; offset += 8) {
+        const batch = activeMarkets.slice(offset, offset + 8);
+        const results = await Promise.allSettled(
+          batch.map((m: any) =>
+            fetchJson(
+              `${RISEX_API}/v1/markets/id/${m.market_id}/trading-view-data?interval=86400000000000&from=${fromNs}&to=${toNs}`,
+              {},
+              9000,
+              0
+            )
+          )
+        );
+        for (const r of results) {
+          if (r.status !== 'fulfilled') continue;
+          const rows: any[] = r.value?.data?.data || [];
+          for (const c of rows) {
+            const tMs = nsToMs(c.time);
+            if (tMs <= 0) continue;
+            const dayMs = Math.floor(tMs / 86_400_000) * 86_400_000;
+            const open = safeNum(c.open);
+            const close = safeNum(c.close);
+            const avgPx = open > 0 && close > 0 ? (open + close) / 2 : close || open;
+            const volUsd = safeNum(c.volume) * avgPx;
+            if (volUsd > 0) {
+              dailyVolMap.set(dayMs, (dailyVolMap.get(dayMs) || 0) + volUsd);
+            }
+          }
+        }
+      }
+
+      const dailyVolume = [...dailyVolMap.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .map(([time, value]) => ({ time, value }));
+
+      let runningTotal = 0;
+      const cumulativeVolume = dailyVolume.map((pt) => {
+        runningTotal += pt.value;
+        return { time: pt.time, value: runningTotal };
+      });
+
+      return {
+        oiHistory,
+        dailyVolume,
+        cumulativeVolume,
+        latestOiUsd: oiHistory[oiHistory.length - 1]?.value ?? liveTotalOi,
+        latestDailyVolumeUsd: dailyVolume[dailyVolume.length - 1]?.value ?? 0,
+        cumulativeVolumeUsd: runningTotal,
+        source: 'RISEx 1D Candles & DefiLlama OI',
+      };
+    }
+  );
+}
+
+function startObservedTradeCollector() {
+  if (!historyStore.ready || typeof WebSocket === 'undefined') return;
+  let ws: WebSocket | null = null;
+  let attempts = 0;
+  let closed = false;
+  let flushing = false;
+  let reconnect: ReturnType<typeof setTimeout> | null = null;
+  let buffer: ObservedTradeRecord[] = [];
+  const flush = async () => {
+    if (flushing || !buffer.length) return;
+    flushing = true;
+    const batch = buffer.splice(0, 600);
+    try {
+      await historyStore.recordTrades(batch);
+    } catch {
+      buffer = [...batch, ...buffer].slice(0, 6000);
+    } finally {
+      flushing = false;
+    }
+  };
+  const interval = setInterval(() => {
+    void flush();
+  }, 5000);
+  const connect = () => {
+    if (closed) return;
+    try {
+      const socket = new WebSocket('wss://ws.rise.trade/ws');
+      ws = socket;
+      socket.addEventListener('open', () => {
+        attempts = 0;
+        socket.send(JSON.stringify({ method: 'subscribe', params: { channel: 'trades' } }));
+      });
+      socket.addEventListener('message', (message) => {
+        try {
+          const frame = JSON.parse(String(message.data));
+          if (frame?.channel !== 'trades') return;
+          const marketId = String(frame.market_id ?? '');
+          const items = Array.isArray(frame.data) ? frame.data : frame.data?.trades ?? [frame.data];
+          for (const item of items) {
+            const id = String(item?.id ?? '');
+            const price = safeNum(item?.price);
+            const size = safeNum(item?.size);
+            if (!/^\d+$/.test(marketId) || !id || price <= 0 || size <= 0) continue;
+            const feeFields = [item.fee_maker, item.fee_taker, item.fee_liquidation].filter(
+              (v: unknown) => v !== null && v !== undefined && v !== ''
+            );
+            const reportedFee =
+              feeFields.length > 0
+                ? feeFields.reduce((s: number, v: unknown) => s + safeNum(v), 0)
+                : null;
+            const ts = nsToMs(frame.worker_timestamp ?? frame.timestamp ?? frame.block_timestamp ?? Date.now());
+            const timestampMs = ts > 0 ? ts : Date.now();
+            const maker = String(item?.maker || '');
+            const taker = String(item?.taker || '');
+            const makerSide = Number(item?.maker_side);
+            if (/^0x[a-fA-F0-9]{40}$/.test(maker)) seedDiscoveredTrader(maker, { source: 'live-trade-maker' });
+            if (/^0x[a-fA-F0-9]{40}$/.test(taker)) seedDiscoveredTrader(taker, { source: 'live-trade-taker' });
+            if (buffer.length >= 6000) buffer.shift();
+            buffer.push({
+              marketId,
+              tradeId: id,
+              timestampMs,
+              notionalUsd: price * size,
+              feeUsd: reportedFee,
+              maker: /^0x[a-fA-F0-9]{40}$/.test(maker) ? maker.toLowerCase() : null,
+              taker: /^0x[a-fA-F0-9]{40}$/.test(taker) ? taker.toLowerCase() : null,
+              makerSide: Number.isInteger(makerSide) && (makerSide === 0 || makerSide === 1) ? (makerSide as 0 | 1) : null,
+              price: String(item.price),
+              size: String(item.size),
+            });
+          }
+        } catch {
+          // ignore malformed WS frames
+        }
+      });
+      socket.addEventListener('close', () => {
+        if (ws !== socket) return;
+        ws = null;
+        if (!closed) reconnect = setTimeout(connect, Math.min(60000, 1500 * 2 ** Math.min(6, attempts++)));
+      });
+      socket.addEventListener('error', () => {
+        socket.close();
+      });
+    } catch {
+      if (!closed) reconnect = setTimeout(connect, Math.min(60000, 1500 * 2 ** Math.min(6, attempts++)));
+    }
+  };
+  connect();
+  const shutdown = () => {
+    closed = true;
+    if (reconnect) clearTimeout(reconnect);
+    clearInterval(interval);
+    ws?.close();
+    void flush();
+  };
+  process.once('SIGTERM', shutdown);
+  process.once('SIGINT', shutdown);
+}
+
 async function startServer() {
   loadDiskCache();
 
@@ -1076,28 +1460,151 @@ async function startServer() {
     next();
   });
 
+  // Authenticated session sync + personal watchlist stored in Cloud SQL
+  app.post('/api/auth/session', requireAuth, async (req: AuthRequest, res: Response) => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+      const user = await getOrCreateUser(req.user.uid, req.user.email || '');
+      res.json({ uid: user.uid, email: user.email });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Session sync failed' });
+    }
+  });
+
+  app.get('/api/watchlist', requireAuth, async (req: AuthRequest, res: Response) => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+      await getOrCreateUser(req.user.uid, req.user.email || '');
+      const marketIds = await getUserWatchlist(req.user.uid);
+      res.json({ marketIds });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to load watchlist' });
+    }
+  });
+
+  app.put('/api/watchlist', requireAuth, async (req: AuthRequest, res: Response) => {
+    try {
+      if (!req.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+      await getOrCreateUser(req.user.uid, req.user.email || '');
+      const ids = Array.isArray(req.body?.marketIds) ? req.body.marketIds : [];
+      const saved = await saveUserWatchlist(req.user.uid, ids);
+      res.json({ marketIds: saved });
+    } catch (err: any) {
+      res.status(500).json({ error: err?.message || 'Failed to save watchlist' });
+    }
+  });
+
+  app.get('/api/analytics/position-changes', async (_req: Request, res: Response) => {
+    try {
+      const result = await cachedCallSWR(
+        'analytics:position-changes',
+        30_000,
+        90_000,
+        async () => {
+          const dbResult = await historyStore.getPositionChanges().catch(() => ({
+            fromTime: null,
+            toTime: null,
+            mode: 'unavailable' as const,
+            changes: [],
+          }));
+          if (dbResult.mode !== 'unavailable' && dbResult.changes.length > 0) {
+            return dbResult;
+          }
+          // Immediate live snapshot fallback from enriched indexed traders
+          const now = Date.now();
+          const liveRows = buildLiveCohortRows(now);
+          const changes = liveRows
+            .map((r) => ({
+              marketId: r.marketId,
+              cohort: r.cohort,
+              fromTime: null,
+              toTime: now,
+              previousNetUsd: null,
+              currentNetUsd: r.longUsd - r.shortUsd,
+              deltaNetUsd: null,
+              currentLongUsd: r.longUsd,
+              currentShortUsd: r.shortUsd,
+              positionCount: r.positions,
+            }))
+            .sort((a, b) => Math.abs(b.currentNetUsd) - Math.abs(a.currentNetUsd))
+            .slice(0, 60);
+          return {
+            fromTime: null,
+            toTime: changes.length > 0 ? now : null,
+            mode: changes.length > 0 ? ('current' as const) : ('unavailable' as const),
+            changes,
+          };
+        }
+      );
+      res.json({
+        ...result,
+        indexedTraders: tradersMap.size,
+      });
+    } catch (err: any) {
+      res.status(503).json({ error: err?.message || 'Position changes unavailable' });
+    }
+  });
+
+  app.get('/api/analytics/history', async (_req: Request, res: Response) => {
+    try {
+      const payload = await getRisexHistoricalAnalytics();
+      res.json(payload);
+    } catch (err: any) {
+      res.status(503).json({ error: err?.message || 'Historical analytics unavailable' });
+    }
+  });
+
   app.get('/api/health', (_req: Request, res: Response) => {
+    const allTraders = Array.from(tradersMap.values());
+    const tradersEnriched = allTraders.filter((t) => t.portfolioEnriched).length;
+    const tradersUnenrichedPending = allTraders.filter(
+      (t) => !t.portfolioEnriched && t.lastUpdated <= 0
+    ).length;
+    const tradersAttemptedEmpty = allTraders.filter(
+      (t) => !t.portfolioEnriched && t.lastUpdated > 0
+    ).length;
     res.json({
       ok: true,
       uptimeSec: Math.round(process.uptime()),
-      tradersDiscovered: tradersMap.size,
-      tradersEnriched: Array.from(tradersMap.values()).filter((t) => t.portfolioEnriched).length,
+      tradersDiscovered: allTraders.length,
+      tradersEnriched,
+      tradersUnenrichedPending,
+      tradersAttemptedEmpty,
+      authBackfillComplete,
+      cmBackfillComplete,
       marketsCount: marketsCache.length,
       indexingInProgress: isIndexing,
       lastIndexComplete,
     });
   });
 
-  runBackgroundIndexer();
+  // Deferred background warm-up & Cloud SQL sync (no eager top-level DB connect probes)
+  setTimeout(() => {
+    void restoreIndexFromCloudSql().then(() => {
+      void captureCohortSnapshot();
+      runBackgroundIndexer();
+    });
+    startObservedTradeCollector();
+    getDefiLlamaRiseData().catch(() => {});
+    getRisexHistoricalAnalytics().catch(() => {});
+    getRecentMarketTrades().catch(() => {});
+  }, 800);
+
   setInterval(() => {
     runBackgroundIndexer();
   }, 120000);
-
-  // Pre-warm DefiLlama & recent trades cache cleanly in background
-  setTimeout(() => {
-    getDefiLlamaRiseData().catch(() => {});
-    getRecentMarketTrades().catch(() => {});
-  }, 600);
+  setInterval(() => {
+    void captureCohortSnapshot();
+  }, COHORT_CAPTURE_INTERVAL_MS);
 
   // 1. Unified Overview Pulse + DefiLlama + Markets + Top Traders + Recent Fills (4s SWR cached -> instant load)
   app.get('/api/overview', async (_req: Request, res: Response) => {
@@ -1156,7 +1663,7 @@ async function startServer() {
 
         const topTraders = [...traders]
           .sort((a, b) => b.totalPnlAll - a.totalPnlAll)
-          .slice(0, 12)
+          .slice(0, 15)
           .map(({ positions: _positions, ...rest }) => ({ ...rest, positions: [] }));
 
         const profitability = computeProfitabilitySummary(traders);
@@ -1234,12 +1741,7 @@ async function startServer() {
       .slice(0, 8);
 
     const matchedTraders = Array.from(tradersMap.values())
-      .filter(
-        (t) =>
-          t.address.toLowerCase().includes(q) ||
-          (t.username && t.username.toLowerCase().includes(q)) ||
-          (t.xHandle && t.xHandle.toLowerCase().includes(q))
-      )
+      .filter((t) => matchesTraderQuery(t, q))
       .sort((a, b) => Math.abs(b.totalPnlAll) - Math.abs(a.totalPnlAll))
       .slice(0, 10);
 
@@ -1581,6 +2083,54 @@ async function startServer() {
     } catch (err: any) {
       res.status(500).json({ error: err.message || 'Failed to load candles' });
     }
+  });
+
+  // 7b. Batched real 24h OHLCV sparklines for Overview & Markets cards
+  app.get('/api/markets/sparklines', async (req: Request, res: Response) => {
+    const ids = String(req.query.ids || '')
+      .split(',')
+      .map((v) => v.trim())
+      .filter((v) => /^\d{1,6}$/.test(v))
+      .slice(0, 30);
+    const unique = [...new Set(ids)];
+    if (!unique.length) {
+      res.json({ series: {}, fetchedAt: Date.now() });
+      return;
+    }
+    const now = Date.now();
+    const toNs = (BigInt(now) * 1000000n).toString();
+    const fromNs = (BigInt(now - 40 * 3600000) * 1000000n).toString();
+    const series: Record<string, { points: Array<{ time: number; price: number }>; lastCandleAt: number | null }> = {};
+    for (let offset = 0; offset < unique.length; offset += 6) {
+      const batch = await Promise.allSettled(
+        unique.slice(offset, offset + 6).map(async (id) => {
+          const result = await cachedCall(`sparkline:${id}`, 300000, async () => {
+            const tv = await fetchJson(
+              `${RISEX_API}/v1/markets/id/${id}/trading-view-data?interval=3600000000000&from=${fromNs}&to=${toNs}`,
+              {},
+              9000,
+              0
+            );
+            const values = (tv?.data?.data || [])
+              .map((c: any) => ({
+                time: nsToMs(c.time),
+                value: safeNum(c.close),
+              }))
+              .filter((p: { time: number; value: number }) => p.time > now - 86400000 && p.time <= now + 300000 && p.value > 0)
+              .sort((a: { time: number }, b: { time: number }) => a.time - b.time);
+            return {
+              points: values.slice(-30).map((p: { time: number; value: number }) => ({ time: p.time, price: p.value })),
+              lastCandleAt: values[values.length - 1]?.time || null,
+            };
+          });
+          return [id, result] as const;
+        })
+      );
+      for (const result of batch) {
+        if (result.status === 'fulfilled') series[result.value[0]] = result.value[1];
+      }
+    }
+    res.json({ series, fetchedAt: Date.now(), source: 'RISEx 1H OHLCV' });
   });
 
   // 8. Orderbook (2s cached)
@@ -1945,7 +2495,7 @@ async function startServer() {
         lastUpdated: Date.now(),
         sources: Array.from(new Set([...(prevCached?.sources || []), 'wallet-view'])),
       };
-      tradersMap.set(syncKey, freshRecord);
+      putTrader(syncKey, freshRecord);
       invalidateLeaderboardAndCohortCaches();
 
       const transfersData =
@@ -2113,6 +2663,67 @@ async function startServer() {
       res.json(payload);
     } catch (err: any) {
       res.status(500).json({ error: err.message || 'Failed to load explorer data' });
+    }
+  });
+
+  // 13b. Live RISE RPC blocks (1.5s cached, independent of Blockscout indexing)
+  app.get('/api/chain/live', async (_req: Request, res: Response) => {
+    try {
+      const payload = await cachedCall('chain:rpc:live', 1500, async () => {
+        const rpc = (method: string, params: unknown[]) =>
+          fetchJson(
+            RISE_RPC,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+            },
+            5000
+          );
+        const headResp = await rpc('eth_blockNumber', []);
+        const headHex = typeof headResp?.result === 'string' ? headResp.result : '';
+        if (!/^0x[0-9a-f]+$/i.test(headHex)) {
+          throw new Error('RISE RPC block head unavailable');
+        }
+        const head = parseInt(headHex, 16);
+        const heights = Array.from({ length: 20 }, (_, i) => head - i).filter((n) => n >= 0);
+        let rawBlocks: unknown[] = [];
+        try {
+          const batchPayload = heights.map((n, idx) => ({
+            jsonrpc: '2.0',
+            id: idx + 1,
+            method: 'eth_getBlockByNumber',
+            params: [`0x${n.toString(16)}`, false],
+          }));
+          const batchResp = await fetchJson(
+            RISE_RPC,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(batchPayload),
+            },
+            5000
+          );
+          if (Array.isArray(batchResp)) {
+            rawBlocks = batchResp.map((item: any) => item?.result).filter(Boolean);
+          }
+        } catch {
+          rawBlocks = [];
+        }
+        if (rawBlocks.length === 0) {
+          const results = await Promise.allSettled(
+            heights.slice(0, 12).map((n) => rpc('eth_getBlockByNumber', [`0x${n.toString(16)}`, false]))
+          );
+          rawBlocks = results
+            .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+            .map((r) => r.value?.result);
+        }
+        return normalizeRpcBlocks(rawBlocks, Date.now());
+      });
+      res.setHeader('Cache-Control', 'no-store');
+      res.json(payload);
+    } catch (err: any) {
+      res.status(503).json({ error: err?.message || 'RISE RPC unavailable' });
     }
   });
 

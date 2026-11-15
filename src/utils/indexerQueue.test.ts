@@ -62,3 +62,18 @@ test('selectIndexerQueue prioritizes unenriched & oldest stale traders in round-
   // Backfill picks: 0xfff (high vol unenriched) -> 0x111 (low vol unenriched)
   assert.deepEqual(queue, ['0xddd', '0xccc', '0xbbb', '0xfff', '0x111']);
 });
+
+test('selectIndexerQueue skips recently-attempted empty wallets so dead signers do not starve real unenriched accounts', () => {
+  const now = 1_700_000_000_000;
+  const freshMs = 300_000;
+  const map = new Map<string, IndexerTraderMeta>([
+    ['0xdead', { address: '0xdead', portfolioEnriched: false, lastUpdated: now - 60_000, volumeAll: 0, realizedPnlAll: 0 }],
+    ['0xdead2', { address: '0xdead2', portfolioEnriched: false, lastUpdated: now - 120_000, volumeAll: 0, realizedPnlAll: 0 }],
+    ['0xreal', { address: '0xreal', portfolioEnriched: false, lastUpdated: 0, volumeAll: 0, realizedPnlAll: 0 }],
+    ['0xoldempty', { address: '0xoldempty', portfolioEnriched: false, lastUpdated: now - 7 * 3_600_000, volumeAll: 0, realizedPnlAll: 0 }],
+  ]);
+
+  const queue = selectIndexerQueue(['0xdead'], map, now, freshMs, 10, 10);
+  assert.deepEqual(queue, ['0xreal', '0xoldempty']);
+});
+

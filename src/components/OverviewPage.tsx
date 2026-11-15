@@ -39,16 +39,20 @@ import {
   buildMarketDashboard,
   buildMarketSectors,
   buildOpenInterestLeaders,
-  buildVolumeHeatmap,
   cleanBaseSymbol,
   computeTakerFlow,
   type DashboardSectorFilter,
 } from '../utils/overviewAnalytics';
 import type { NavTab } from './Navbar';
-import { MarketMoveMeter } from './Charts';
+import { MarketMiniChart } from './MarketMiniChart';
+import { useMarketSparklines } from '../hooks/useMarketSparklines';
+import { HistoricalInsights } from './HistoricalInsights';
+import { MarketHeatmap } from './MarketHeatmap';
 import { RisexSymbol } from './RisexSymbol';
 import { TokenBadge, TraderAvatar } from './TraderAvatar';
 import { useMarketStream } from '../context/MarketWebSocketContext';
+import { useTheme } from '../context/ThemeContext';
+import { formatTraderDisplay } from '../utils/traderDisplay';
 
 const WATCHLIST_KEY = 'risexscan_watchlist_v1';
 const OVERVIEW_CACHE_KEY = 'risexscan_overview_bundle_v2';
@@ -78,8 +82,10 @@ const DefiLlamaTvlChart: React.FC<{
   changePct: number;
   sharePct: number;
 }> = ({ points, currentTvl, chainTvl, changePct, sharePct }) => {
+  const { isDark } = useTheme();
   const [windowDays, setWindowDays] = useState<'14D' | '30D' | '90D' | 'ALL'>('30D');
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const tvlStroke = isDark ? '#03DE82' : '#059669';
 
   const visiblePoints = useMemo(() => {
     if (!points || points.length === 0) return [];
@@ -125,30 +131,30 @@ const DefiLlamaTvlChart: React.FC<{
     <div className="sunrise-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between h-full">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-wider text-[#03DE82]">
+          <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-wider text-emerald-600 dark:text-[#03DE82]">
             <ShieldCheck className="h-3.5 w-3.5" />
             DefiLlama Verified TVL · RISE Chain
           </div>
           <div className="mt-1 flex flex-wrap items-baseline gap-2.5">
-            <span className="font-mono text-2xl font-bold tabular-nums text-[#e8edfb]">
+            <span className="font-mono text-2xl font-bold tabular-nums text-slate-900 dark:text-[#e8edfb]">
               {activePoint ? formatUsd(activePoint.tvl, true) : formatUsd(currentTvl, true)}
             </span>
             <span
               className={`font-mono text-xs font-semibold tabular-nums ${
-                changePct >= 0 ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'
+                changePct >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'
               }`}
             >
               {formatPct(changePct)} 24h
             </span>
             {chainTvl > 0 && (
-              <span className="font-mono text-[11px] text-slate-400">
+              <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
                 {sharePct.toFixed(1)}% of RISE Chain ({formatUsd(chainTvl, true)})
               </span>
             )}
           </div>
         </div>
 
-        <div className="flex items-center gap-1 rounded-lg border border-slate-800 bg-[#080d18] p-0.5">
+        <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-100/90 p-0.5 dark:border-slate-800 dark:bg-[#080d18]">
           {(['14D', '30D', '90D', 'ALL'] as const).map((w) => (
             <button
               key={w}
@@ -156,8 +162,8 @@ const DefiLlamaTvlChart: React.FC<{
               onClick={() => setWindowDays(w)}
               className={`rounded-md px-2.5 py-1 text-[11px] font-mono font-semibold transition-colors ${
                 windowDays === w
-                  ? 'bg-[#03DE82] text-[#041a11]'
-                  : 'text-slate-400 hover:text-[#e8edfb]'
+                  ? 'bg-emerald-600 text-white dark:bg-[#03DE82] dark:text-[#041a11]'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-[#e8edfb]'
               }`}
             >
               {w}
@@ -175,8 +181,8 @@ const DefiLlamaTvlChart: React.FC<{
           >
             <defs>
               <linearGradient id="tvlAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#03DE82" stopOpacity="0.34" />
-                <stop offset="100%" stopColor="#03DE82" stopOpacity="0.01" />
+                <stop offset="0%" stopColor={tvlStroke} stopOpacity={isDark ? '0.34' : '0.24'} />
+                <stop offset="100%" stopColor={tvlStroke} stopOpacity="0.01" />
               </linearGradient>
             </defs>
 
@@ -189,14 +195,14 @@ const DefiLlamaTvlChart: React.FC<{
                     x2={width - padR}
                     y1={y}
                     y2={y}
-                    stroke="rgba(148,163,205,0.12)"
+                    stroke={isDark ? 'rgba(148,163,205,0.12)' : 'rgba(15,23,42,0.08)'}
                     strokeDasharray="3 3"
                     strokeWidth={1}
                   />
                   <text
                     x={width - padR + 8}
                     y={y + 3.5}
-                    fill="#7c8bb0"
+                    fill={isDark ? '#7c8bb0' : '#64748b'}
                     fontSize="10"
                     fontFamily="JetBrains Mono, monospace"
                   >
@@ -207,7 +213,7 @@ const DefiLlamaTvlChart: React.FC<{
             })}
 
             <path d={areaPath} fill="url(#tvlAreaGrad)" />
-            <path d={linePath} fill="none" stroke="#03DE82" strokeWidth={2.2} strokeLinejoin="round" />
+            <path d={linePath} fill="none" stroke={tvlStroke} strokeWidth={2.2} strokeLinejoin="round" />
 
             {hoverIdx !== null && visiblePoints[hoverIdx] && (
               <g pointerEvents="none">
@@ -216,16 +222,16 @@ const DefiLlamaTvlChart: React.FC<{
                   x2={getX(hoverIdx)}
                   y1={padT}
                   y2={padT + cH}
-                  stroke="#ffb02e"
-                  strokeOpacity={0.6}
+                  stroke={isDark ? '#ffb02e' : '#d97706'}
+                  strokeOpacity={0.65}
                   strokeDasharray="3 3"
                 />
                 <circle
                   cx={getX(hoverIdx)}
                   cy={getY(visiblePoints[hoverIdx].tvl)}
                   r={4}
-                  fill="#03DE82"
-                  stroke="#060911"
+                  fill={tvlStroke}
+                  stroke={isDark ? '#060911' : '#ffffff'}
                   strokeWidth={2}
                 />
               </g>
@@ -256,7 +262,7 @@ const DefiLlamaTvlChart: React.FC<{
                   key={idx}
                   x={getX(idx)}
                   y={height - 6}
-                  fill="#5d6987"
+                  fill={isDark ? '#5d6987' : '#64748b'}
                   fontSize="10"
                   textAnchor={idx === 0 ? 'start' : idx === visiblePoints.length - 1 ? 'end' : 'middle'}
                   fontFamily="JetBrains Mono, monospace"
@@ -267,22 +273,22 @@ const DefiLlamaTvlChart: React.FC<{
             })}
           </svg>
         ) : (
-          <div className="flex h-[160px] items-center justify-center rounded-xl border border-slate-800/70 bg-[#080d18] text-xs font-mono text-slate-500">
+          <div className="flex h-[160px] items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-xs font-mono text-slate-500 dark:border-slate-800/70 dark:bg-[#080d18]">
             Syncing DefiLlama TVL history…
           </div>
         )}
       </div>
 
       {activePoint && (
-        <div className="mt-2 flex items-center justify-between border-t border-slate-800/70 pt-2 text-[11px] font-mono text-slate-400">
+        <div className="mt-2 flex items-center justify-between border-t border-slate-200/80 pt-2 text-[11px] font-mono text-slate-500 dark:border-slate-800/70 dark:text-slate-400">
           <span>
             Date:{' '}
-            <strong className="text-slate-200">
+            <strong className="text-slate-800 dark:text-slate-200">
               {new Date(activePoint.date).toISOString().slice(0, 10)}
             </strong>
           </span>
           <span>
-            Protocol Deposit TVL: <strong className="text-[#03DE82]">{formatUsd(activePoint.tvl)}</strong>
+            Protocol Deposit TVL: <strong className="text-emerald-600 dark:text-[#03DE82]">{formatUsd(activePoint.tvl)}</strong>
           </span>
         </div>
       )}
@@ -417,13 +423,20 @@ export const OverviewPage: React.FC<{
   const sectorData = useMemo(() => buildMarketSectors(markets), [markets]);
   const oiLeaders = useMemo(() => buildOpenInterestLeaders(markets, 10), [markets]);
   const fundingHeatmap = useMemo(() => buildFundingHeatmap(markets, 20), [markets]);
-  const volumeHeatmap = useMemo(() => buildVolumeHeatmap(markets, 16), [markets]);
   const takerFlow = useMemo(() => computeTakerFlow(liveTrades), [liveTrades]);
 
   const dashboardData = useMemo(
     () => buildMarketDashboard(markets, dashFilter, 6),
     [markets, dashFilter]
   );
+
+  const miniIds=useMemo(
+    ()=>[...new Set([
+      ...dashboardData.topVolume,...dashboardData.gainers,...dashboardData.losers,
+    ].map(entry=>entry.marketId).concat(watchlistIds))].slice(0,30),
+    [dashboardData,watchlistIds]
+  );
+  const miniCharts=useMarketSparklines(miniIds);
 
   const topTraders = bundle?.topTraders || [];
   const prof = bundle?.profitability;
@@ -452,14 +465,14 @@ export const OverviewPage: React.FC<{
       <section className="sunrise-card rounded-xl p-5 sm:p-6">
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-12 lg:items-center">
           <div className="lg:col-span-7 space-y-2.5">
-            <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-wider text-[#03DE82]">
-              <RisexSymbol className="h-3.5 w-3.5 text-[#03DE82]" />
+            <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-wider text-emerald-600 dark:text-[#03DE82]">
+              <RisexSymbol className="h-3.5 w-3.5 text-emerald-600 dark:text-[#03DE82]" />
               RISEx Mainnet · RISE Chain 4153
             </div>
-            <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-[#e8edfb]">
+            <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-[#e8edfb]">
               Perpetuals, RWA &amp; On-Chain Orderflow Intelligence
             </h1>
-            <p className="max-w-xl text-xs sm:text-sm text-slate-400">
+            <p className="max-w-xl text-xs sm:text-sm text-slate-600 dark:text-slate-400">
               Real-time DefiLlama TVL, Crypto &amp; RWA market structure, funding heatmaps, cohort bias, and realized settlement feeds.
             </p>
             <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -474,23 +487,23 @@ export const OverviewPage: React.FC<{
               <button
                 type="button"
                 onClick={() => onNavigateTab('leaderboard')}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/70 bg-[#070b14] px-3.5 py-2 text-xs font-medium text-[#e8edfb] hover:border-[#ffb02e]/50 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-medium text-slate-800 hover:border-amber-500/60 hover:bg-amber-50/50 dark:border-slate-700/70 dark:bg-[#070b14] dark:text-[#e8edfb] dark:hover:border-[#ffb02e]/50 transition-colors"
               >
-                <Trophy className="h-3.5 w-3.5 text-[#ffb02e]" />
+                <Trophy className="h-3.5 w-3.5 text-amber-600 dark:text-[#ffb02e]" />
                 Leaderboard
               </button>
               <button
                 type="button"
                 onClick={() => onNavigateTab('markets')}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/70 bg-[#070b14] px-3.5 py-2 text-xs font-medium text-slate-300 hover:border-[#ffb02e]/50 hover:text-[#e8edfb] transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-medium text-slate-700 hover:border-amber-500/60 hover:text-slate-900 dark:border-slate-700/70 dark:bg-[#070b14] dark:text-slate-300 dark:hover:border-[#ffb02e]/50 dark:hover:text-[#e8edfb] transition-colors"
               >
-                {bundle?.totalMarketsCount || markets.length || 54} Markets
+                {bundle?.activeMarketsCount ?? (markets.filter((m) => m.active).length || 53)} Active Markets
                 <ArrowRight className="h-3.5 w-3.5" />
               </button>
               <button
                 type="button"
                 onClick={() => onNavigateTab('explorer')}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700/70 bg-[#070b14] px-3.5 py-2 text-xs font-medium text-slate-300 hover:border-[#46a6ff]/50 hover:text-[#e8edfb] transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-medium text-slate-700 hover:border-blue-500/60 hover:text-slate-900 dark:border-slate-700/70 dark:bg-[#070b14] dark:text-slate-300 dark:hover:border-[#46a6ff]/50 dark:hover:text-[#e8edfb] transition-colors"
               >
                 <Blocks className="h-3.5 w-3.5" />
                 Block Explorer
@@ -501,9 +514,9 @@ export const OverviewPage: React.FC<{
           <div className="lg:col-span-5">
             <form
               onSubmit={handleWalletJump}
-              className="rounded-xl border border-slate-700/50 bg-[#090e1a]/90 p-4 space-y-2.5"
+              className="rounded-xl border border-slate-200 bg-slate-50/90 p-4 space-y-2.5 dark:border-slate-700/50 dark:bg-[#090e1a]/90"
             >
-              <div className="text-xs font-medium text-slate-300">
+              <div className="text-xs font-medium text-slate-700 dark:text-slate-300">
                 Inspect Any RISEx Account or Wallet
               </div>
               <div className="relative">
@@ -513,11 +526,11 @@ export const OverviewPage: React.FC<{
                   value={walletInput}
                   onChange={(e) => setWalletInput(e.target.value)}
                   placeholder="Enter RISEx username (e.g. sqalf, yeff) or 0x wallet…"
-                  className="w-full rounded-xl border border-slate-700/60 bg-[#05070d] py-2.5 pl-9 pr-20 text-xs font-mono text-[#e8edfb] placeholder:text-slate-500 focus:border-[#ffb02e] focus:outline-none"
+                  className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-20 text-xs font-mono text-slate-900 placeholder:text-slate-400 focus:border-amber-500 focus:outline-none dark:border-slate-700/60 dark:bg-[#05070d] dark:text-[#e8edfb] dark:placeholder:text-slate-500 dark:focus:border-[#ffb02e]"
                 />
                 <button
                   type="submit"
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg bg-[#ffb02e] px-3 py-1 text-xs font-semibold text-[#1f0e03] hover:brightness-110"
+                  className="sunrise-gradient-btn absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg px-3 py-1 text-xs font-semibold transition-colors"
                 >
                   Inspect
                 </button>
@@ -525,16 +538,19 @@ export const OverviewPage: React.FC<{
               {topTraders.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1.5 pt-1">
                   <span className="text-[10px] uppercase tracking-wider text-slate-500">Top:</span>
-                  {topTraders.slice(0, 4).map((t) => (
-                    <button
-                      key={t.address}
-                      type="button"
-                      onClick={() => onSelectWallet(t.address)}
-                      className="rounded-md border border-slate-800 bg-[#0e1526] px-2 py-0.5 text-[11px] font-mono text-slate-300 hover:border-[#ffb02e]/50 hover:text-[#ffb02e]"
-                    >
-                      {t.username || shortAddress(t.address, 5, 4)}
-                    </button>
-                  ))}
+                  {topTraders.slice(0, 4).map((t) => {
+                    const info = formatTraderDisplay(t.address, t.username);
+                    return (
+                      <button
+                        key={t.address}
+                        type="button"
+                        onClick={() => onSelectWallet(t.address)}
+                        className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-mono text-slate-700 hover:border-amber-500/60 hover:text-amber-700 dark:border-slate-800 dark:bg-[#0e1526] dark:text-slate-300 dark:hover:border-[#ffb02e]/50 dark:hover:text-[#ffb02e]"
+                      >
+                        {info.isVault ? info.displayName : t.username || shortAddress(t.address, 5, 4)}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </form>
@@ -544,57 +560,59 @@ export const OverviewPage: React.FC<{
 
       {/* 6-Stat Executive KPI Strip */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-        <div className="sunrise-card rounded-xl p-3.5 border-t-2 border-t-[#03DE82]/60">
-          <div className="text-[11px] uppercase tracking-wider text-slate-400">Protocol TVL</div>
-          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-[#03DE82]">
+        <div className="sunrise-card rounded-xl p-3.5 border-t-2 border-t-emerald-500/70 dark:border-t-[#03DE82]/60">
+          <div className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Protocol TVL</div>
+          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-emerald-600 dark:text-[#03DE82]">
             {tvl?.protocolTvl ? formatUsd(tvl.protocolTvl, true) : '—'}
           </div>
-          <div className="mt-0.5 text-[10px] font-mono text-slate-400">
+          <div className="mt-0.5 text-[10px] font-mono text-slate-500 dark:text-slate-400">
             {tvl ? `${formatPct(tvl.tvl24hChangePct)} 24h` : 'DefiLlama'}
           </div>
         </div>
-        <div className="sunrise-card rounded-xl p-3.5 border-t-2 border-t-[#e8edfb]/30">
-          <div className="text-[11px] uppercase tracking-wider text-slate-400">24h Volume</div>
-          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-[#e8edfb]">
+        <div className="sunrise-card rounded-xl p-3.5 border-t-2 border-t-slate-400/60 dark:border-t-[#e8edfb]/30">
+          <div className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">24h Volume</div>
+          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-slate-900 dark:text-[#e8edfb]">
             {bundle ? formatUsd(bundle.totalVolume24h, true) : '—'}
           </div>
-          <div className="mt-0.5 text-[10px] font-mono text-slate-400">
+          <div className="mt-0.5 text-[10px] font-mono text-slate-500 dark:text-slate-400">
             {perpVolShare.toFixed(0)}% Perp · {(100 - perpVolShare).toFixed(0)}% RWA
           </div>
         </div>
-        <div className="sunrise-card rounded-xl p-3.5 border-t-2 border-t-[#ffb02e]/60">
-          <div className="text-[11px] uppercase tracking-wider text-slate-400">Open Interest</div>
-          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-[#ffb02e]">
+        <div className="sunrise-card rounded-xl p-3.5 border-t-2 border-t-amber-500/70 dark:border-t-[#ffb02e]/60">
+          <div className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Open Interest</div>
+          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-amber-600 dark:text-[#ffb02e]">
             {bundle ? formatUsd(bundle.totalOpenInterestUsd, true) : '—'}
           </div>
-          <div className="mt-0.5 text-[10px] font-mono text-slate-400">
+          <div className="mt-0.5 text-[10px] font-mono text-slate-500 dark:text-slate-400">
             {prof ? `${prof.longOiSharePct.toFixed(0)}% Long OI` : 'Live Contracts'}
           </div>
         </div>
-        <div className="sunrise-card rounded-xl p-3.5 border-t-2 border-t-[#22e0a1]/50">
-          <div className="text-[11px] uppercase tracking-wider text-slate-400">Indexed Accounts</div>
-          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-[#22e0a1]">
+        <div className="sunrise-card rounded-xl p-3.5 border-t-2 border-t-teal-500/70 dark:border-t-[#22e0a1]/50">
+          <div className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Indexed Accounts</div>
+          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-emerald-600 dark:text-[#22e0a1]">
             {bundle ? bundle.totalDiscoveredCount.toLocaleString() : '—'}
           </div>
-          <div className="mt-0.5 text-[10px] font-mono text-slate-400">
+          <div className="mt-0.5 text-[10px] font-mono text-slate-500 dark:text-slate-400">
             {prof ? `${prof.profitabilityPct.toFixed(1)}% in Profit` : 'Discovered'}
           </div>
         </div>
-        <div className="sunrise-card rounded-xl p-3.5 border-t-2 border-t-[#8b7bff]/50">
-          <div className="text-[11px] uppercase tracking-wider text-slate-400">Active Markets</div>
-          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-[#e8edfb]">
-            {bundle ? `${bundle.activeMarketsCount}/${bundle.totalMarketsCount}` : '—'}
+        <div className="sunrise-card rounded-xl p-3.5 border-t-2 border-t-violet-500/70 dark:border-t-[#8b7bff]/50">
+          <div className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Active Markets</div>
+          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-slate-900 dark:text-[#e8edfb]">
+            {bundle ? `${bundle.activeMarketsCount} Active` : '—'}
           </div>
-          <div className="mt-0.5 text-[10px] font-mono text-slate-400">
-            {sectorData.perpCount} Crypto · {sectorData.rwaCount} RWA
+          <div className="mt-0.5 text-[10px] font-mono text-slate-500 dark:text-slate-400">
+            {bundle
+              ? `${sectorData.perpCount} Crypto · ${sectorData.rwaCount} RWA · ${Math.max(0, bundle.totalMarketsCount - bundle.activeMarketsCount)} deprecated`
+              : 'Live RISEx markets'}
           </div>
         </div>
-        <div className="sunrise-card rounded-xl p-3.5 border-t-2 border-t-[#46a6ff]/60">
-          <div className="text-[11px] uppercase tracking-wider text-slate-400">RISE Block</div>
-          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-[#46a6ff]">
+        <div className="sunrise-card rounded-xl p-3.5 border-t-2 border-t-blue-500/70 dark:border-t-[#46a6ff]/60">
+          <div className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">RISE Block</div>
+          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-blue-600 dark:text-[#46a6ff]">
             {bundle?.blockNumber ? `#${bundle.blockNumber.toLocaleString()}` : '—'}
           </div>
-          <div className="mt-0.5 text-[10px] font-mono text-slate-400">
+          <div className="mt-0.5 text-[10px] font-mono text-slate-500 dark:text-slate-400">
             Chain ID {bundle?.chainId || '4153'}
           </div>
         </div>
@@ -602,36 +620,36 @@ export const OverviewPage: React.FC<{
 
       {/* Multi-Column Market Dashboard Widget */}
       <section className="sunrise-card rounded-2xl p-4 sm:p-5 space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 pb-3 dark:border-slate-800/80">
           <div className="space-y-0.5">
             <div className="flex items-center gap-2">
-              <LayoutGrid className="h-4 w-4 text-[#ffb02e]" />
-              <h2 className="font-display text-base sm:text-lg font-bold tracking-tight text-[#e8edfb]">
+              <LayoutGrid className="h-4 w-4 text-amber-600 dark:text-[#ffb02e]" />
+              <h2 className="font-display text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-[#e8edfb]">
                 Market Dashboard
               </h2>
             </div>
-            <div className="font-mono text-[11px] tabular-nums text-slate-400">
+            <div className="font-mono text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
               {dashboardData.marketCount} Active Markets · 24h Vol{' '}
-              <span className="text-[#e8edfb] font-semibold">{formatUsd(dashboardData.totalVolume24h, true)}</span> · OI{' '}
-              <span className="text-[#ffb02e] font-semibold">{formatUsd(dashboardData.totalOpenInterestUsd, true)}</span>
+              <span className="text-slate-900 dark:text-[#e8edfb] font-semibold">{formatUsd(dashboardData.totalVolume24h, true)}</span> · OI{' '}
+              <span className="text-amber-600 dark:text-[#ffb02e] font-semibold">{formatUsd(dashboardData.totalOpenInterestUsd, true)}</span>
             </div>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] tabular-nums">
-              <span className="text-[#22e0a1]">{dashboardData.advancers} advancing</span>
-              <span className="text-[#ff4d6d]">{dashboardData.decliners} declining</span>
-              {dashboardData.unchanged > 0 && <span className="text-slate-400">{dashboardData.unchanged} unchanged</span>}
-              <span className="text-slate-600">·</span>
-              <span className={connectionState === 'connected' ? 'text-[#22e0a1]' : 'text-[#ffb02e]'}>
+              <span className="text-emerald-600 dark:text-[#22e0a1]">{dashboardData.advancers} advancing</span>
+              <span className="text-rose-600 dark:text-[#ff4d6d]">{dashboardData.decliners} declining</span>
+              {dashboardData.unchanged > 0 && <span className="text-slate-500 dark:text-slate-400">{dashboardData.unchanged} unchanged</span>}
+              <span className="text-slate-300 dark:text-slate-600">·</span>
+              <span className={connectionState === 'connected' ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-amber-600 dark:text-[#ffb02e]'}>
                 {connectionState === 'connected' ? 'Oracle WS connected' : 'Oracle WS reconnecting'}
               </span>
               <span className="text-slate-500">· 24h volume/OI via REST snapshots</span>
             </div>
             <div
-              className="flex h-1 max-w-[400px] overflow-hidden rounded-full bg-slate-800"
+              className="flex h-1 max-w-[400px] overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800"
               role="img"
               aria-label={`Market breadth: ${dashboardData.advancers} advancing, ${dashboardData.decliners} declining, ${dashboardData.unchanged} unchanged`}
             >
-              <div className="bg-[#22e0a1] transition-[width] duration-300" style={{ width: `${dashboardData.advancersPct}%` }} />
-              <div className="bg-[#ff4d6d] transition-[width] duration-300" style={{ width: `${dashboardData.marketCount > 0 ? dashboardData.decliners / dashboardData.marketCount * 100 : 0}%` }} />
+              <div className="bg-emerald-500 dark:bg-[#22e0a1] transition-[width] duration-300" style={{ width: `${dashboardData.advancersPct}%` }} />
+              <div className="bg-rose-500 dark:bg-[#ff4d6d] transition-[width] duration-300" style={{ width: `${dashboardData.marketCount > 0 ? dashboardData.decliners / dashboardData.marketCount * 100 : 0}%` }} />
             </div>
           </div>
 
@@ -639,7 +657,7 @@ export const OverviewPage: React.FC<{
             <div
               role="group"
               aria-label="Filter Market Dashboard by asset universe"
-              className="inline-flex items-center rounded-lg border border-slate-800 bg-[#070b14] p-0.5"
+              className="inline-flex items-center rounded-lg border border-slate-200 bg-slate-100/90 p-0.5 dark:border-slate-800 dark:bg-[#070b14]"
             >
               {(
                 [
@@ -656,8 +674,8 @@ export const OverviewPage: React.FC<{
                     onClick={() => setDashFilter(tab.id)}
                     className={`rounded-md px-2.5 py-1 text-[11px] font-mono font-semibold whitespace-nowrap shrink-0 transition-colors ${
                       active
-                        ? 'bg-[#ffb02e] text-[#160a02]'
-                        : 'text-slate-400 hover:text-[#e8edfb]'
+                        ? 'sunrise-gradient-btn'
+                        : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-[#e8edfb]'
                     }`}
                   >
                     {tab.label}
@@ -668,7 +686,7 @@ export const OverviewPage: React.FC<{
             <button
               type="button"
               onClick={() => onNavigateTab('markets')}
-              className="rounded-lg border border-slate-800 bg-[#080d18] px-2.5 py-1.5 text-[11px] font-mono text-[#ffb02e] whitespace-nowrap shrink-0 hover:border-[#ffb02e]/50 transition-colors"
+              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-mono font-semibold text-amber-600 whitespace-nowrap shrink-0 hover:border-amber-500/60 dark:border-slate-800 dark:bg-[#080d18] dark:text-[#ffb02e] dark:hover:border-[#ffb02e]/50 transition-colors"
             >
               Screener →
             </button>
@@ -677,15 +695,15 @@ export const OverviewPage: React.FC<{
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {/* Column 1: 24h Volume */}
-          <div className="rounded-xl border border-slate-800/80 bg-[#070b14] p-3.5 space-y-2.5">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/85 p-3.5 space-y-2.5 dark:border-slate-800/80 dark:bg-[#070b14]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-md border border-[#ffb02e]/30 bg-[#ffb02e]/12 text-[#ffb02e]">
+                <span className="flex h-6 w-6 items-center justify-center rounded-md border border-amber-500/35 bg-amber-500/12 text-amber-600 dark:border-[#ffb02e]/30 dark:bg-[#ffb02e]/12 dark:text-[#ffb02e]">
                   <Zap className="h-3.5 w-3.5" />
                 </span>
-                <h3 className="font-display text-sm font-bold text-[#e8edfb]">24h Volume</h3>
+                <h3 className="font-display text-sm font-bold text-slate-900 dark:text-[#e8edfb]">24h Volume</h3>
               </div>
-              <span className="font-mono text-[10px] uppercase tracking-wider text-[#ffb02e]">Liquidity</span>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-amber-600 dark:text-[#ffb02e]">Liquidity</span>
             </div>
 
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
@@ -696,35 +714,35 @@ export const OverviewPage: React.FC<{
                     key={entry.marketId}
                     type="button"
                     onClick={() => onSelectMarket(entry.marketId)}
-                    className="group flex flex-col justify-between gap-2 rounded-lg border border-[#ffb02e]/20 bg-[#0b1120] p-2.5 text-left hover:border-[#ffb02e]/55 hover:bg-[#111a30] transition-colors min-w-0"
+                    className="group flex flex-col justify-between gap-2 rounded-lg border border-amber-500/25 bg-white p-2.5 text-left hover:border-amber-500/60 hover:bg-amber-50/35 dark:border-[#ffb02e]/20 dark:bg-[#0b1120] dark:hover:border-[#ffb02e]/55 dark:hover:bg-[#111a30] transition-colors min-w-0"
                   >
                     <div className="flex items-center justify-between gap-1.5 w-full min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <TokenBadge symbol={entry.symbol} category={entry.sector} size={20} />
-                        <span className="font-display text-xs font-bold text-[#e8edfb] truncate group-hover:text-[#ffb02e] transition-colors">
+                        <span className="font-display text-xs font-bold text-slate-900 truncate group-hover:text-amber-600 dark:text-[#e8edfb] dark:group-hover:text-[#ffb02e] transition-colors">
                           {entry.symbol}
                         </span>
                         <span className="font-mono text-[9px] text-slate-500">#{idx + 1}</span>
                       </div>
-                      <MarketMoveMeter changePct={entry.changePct} width={36} height={14} />
+                      <MarketMiniChart series={miniCharts[entry.marketId]} changePct={entry.changePct} width={36} height={14} />
                     </div>
 
                     <div className="flex items-end justify-between gap-1.5 w-full">
                       <div className="min-w-0">
-                        <div className="font-mono text-[11px] font-semibold tabular-nums text-[#e8edfb] truncate">
+                        <div className="font-mono text-[11px] font-semibold tabular-nums text-slate-900 dark:text-[#e8edfb] truncate">
                           {formatPrice(entry.markPrice)}
                         </div>
-                        <div className="font-mono text-[9px] tabular-nums text-slate-400 truncate">
+                        <div className="font-mono text-[9px] tabular-nums text-slate-500 dark:text-slate-400 truncate">
                           OI {formatUsd(entry.openInterestUsd, true)}
                         </div>
                       </div>
                       <div className="shrink-0 text-right">
-                        <div className="rounded border border-[#ffb02e]/30 bg-[#ffb02e]/14 px-1.5 py-0.5 font-mono text-[11px] font-bold tabular-nums text-[#ffb02e]">
+                        <div className="rounded border border-amber-500/35 bg-amber-500/12 px-1.5 py-0.5 font-mono text-[11px] font-bold tabular-nums text-amber-700 dark:border-[#ffb02e]/30 dark:bg-[#ffb02e]/14 dark:text-[#ffb02e]">
                           {formatUsd(entry.volume24h, true)}
                         </div>
                         <div
                           className={`mt-0.5 font-mono text-[9px] font-semibold tabular-nums ${
-                            up ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'
+                            up ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'
                           }`}
                         >
                           {up ? '▲' : '▼'} {formatPct(entry.changePct)}
@@ -738,15 +756,15 @@ export const OverviewPage: React.FC<{
           </div>
 
           {/* Column 2: Top Gainers */}
-          <div className="rounded-xl border border-slate-800/80 bg-[#070b14] p-3.5 space-y-2.5">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/85 p-3.5 space-y-2.5 dark:border-slate-800/80 dark:bg-[#070b14]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-md border border-[#22e0a1]/30 bg-[#22e0a1]/12 text-[#22e0a1]">
+                <span className="flex h-6 w-6 items-center justify-center rounded-md border border-emerald-500/35 bg-emerald-500/12 text-emerald-600 dark:border-[#22e0a1]/30 dark:bg-[#22e0a1]/12 dark:text-[#22e0a1]">
                   <TrendingUp className="h-3.5 w-3.5" />
                 </span>
-                <h3 className="font-display text-sm font-bold text-[#e8edfb]">Top Gainers</h3>
+                <h3 className="font-display text-sm font-bold text-slate-900 dark:text-[#e8edfb]">Top Gainers</h3>
               </div>
-              <span className="font-mono text-[10px] uppercase tracking-wider text-[#22e0a1]">24h Leaders</span>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-emerald-600 dark:text-[#22e0a1]">24h Leaders</span>
             </div>
 
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
@@ -762,27 +780,27 @@ export const OverviewPage: React.FC<{
                     onClick={() => onSelectMarket(entry.marketId)}
                     className={`group flex flex-col justify-between gap-2 rounded-lg border p-2.5 text-left transition-colors min-w-0 ${
                       up
-                        ? 'border-[#22e0a1]/22 bg-[#0a141d] hover:border-[#22e0a1]/55 hover:bg-[#0e1f29]'
-                        : 'border-slate-800/90 bg-[#0b1120] hover:border-slate-600 hover:bg-[#11192e]'
+                        ? 'border-emerald-500/25 bg-white hover:border-emerald-500/60 hover:bg-emerald-50/35 dark:border-[#22e0a1]/22 dark:bg-[#0a141d] dark:hover:border-[#22e0a1]/55 dark:hover:bg-[#0e1f29]'
+                        : 'border-slate-200 bg-white hover:border-slate-400 dark:border-slate-800/90 dark:bg-[#0b1120] dark:hover:border-slate-600 dark:hover:bg-[#11192e]'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-1.5 w-full min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <TokenBadge symbol={entry.symbol} category={entry.sector} size={20} />
-                        <span className="font-display text-xs font-bold text-[#e8edfb] truncate group-hover:text-[#22e0a1] transition-colors">
+                        <span className="font-display text-xs font-bold text-slate-900 truncate group-hover:text-emerald-600 dark:text-[#e8edfb] dark:group-hover:text-[#22e0a1] transition-colors">
                           {entry.symbol}
                         </span>
                         <span className="font-mono text-[9px] text-slate-500">#{idx + 1}</span>
                       </div>
-                      <MarketMoveMeter changePct={entry.changePct} width={36} height={14} />
+                      <MarketMiniChart series={miniCharts[entry.marketId]} changePct={entry.changePct} width={36} height={14} />
                     </div>
 
                     <div className="flex items-end justify-between gap-1.5 w-full">
                       <div className="min-w-0">
-                        <div className="font-mono text-[11px] font-semibold tabular-nums text-[#e8edfb] truncate">
+                        <div className="font-mono text-[11px] font-semibold tabular-nums text-slate-900 dark:text-[#e8edfb] truncate">
                           {formatPrice(entry.markPrice)}
                         </div>
-                        <div className="font-mono text-[9px] tabular-nums text-slate-400 truncate">
+                        <div className="font-mono text-[9px] tabular-nums text-slate-500 dark:text-slate-400 truncate">
                           Vol {formatUsd(entry.volume24h, true)}
                         </div>
                       </div>
@@ -790,8 +808,8 @@ export const OverviewPage: React.FC<{
                         <div
                           className={`inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 font-mono text-[11px] font-bold tabular-nums ${
                             up
-                              ? 'border-[#22e0a1]/35 bg-[#22e0a1]/16 text-[#22e0a1]'
-                              : 'border-[#ff4d6d]/35 bg-[#ff4d6d]/16 text-[#ff4d6d]'
+                              ? 'border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:border-[#22e0a1]/35 dark:bg-[#22e0a1]/16 dark:text-[#22e0a1]'
+                              : 'border-rose-500/35 bg-rose-500/12 text-rose-700 dark:border-[#ff4d6d]/35 dark:bg-[#ff4d6d]/16 dark:text-[#ff4d6d]'
                           }`}
                         >
                           <span aria-hidden="true" className="text-[8px]">
@@ -799,7 +817,7 @@ export const OverviewPage: React.FC<{
                           </span>
                           {formatPct(entry.changePct)}
                         </div>
-                        <div className="mt-0.5 font-mono text-[9px] tabular-nums text-slate-400">
+                        <div className="mt-0.5 font-mono text-[9px] tabular-nums text-slate-500 dark:text-slate-400">
                           {entry.maxLeverage}x · {entry.group}
                         </div>
                       </div>
@@ -811,15 +829,15 @@ export const OverviewPage: React.FC<{
           </div>
 
           {/* Column 3: Top Losers */}
-          <div className="rounded-xl border border-slate-800/80 bg-[#070b14] p-3.5 space-y-2.5">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/85 p-3.5 space-y-2.5 dark:border-slate-800/80 dark:bg-[#070b14]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-md border border-[#ff4d6d]/30 bg-[#ff4d6d]/12 text-[#ff4d6d]">
+                <span className="flex h-6 w-6 items-center justify-center rounded-md border border-rose-500/35 bg-rose-500/12 text-rose-600 dark:border-[#ff4d6d]/30 dark:bg-[#ff4d6d]/12 dark:text-[#ff4d6d]">
                   <TrendingDown className="h-3.5 w-3.5" />
                 </span>
-                <h3 className="font-display text-sm font-bold text-[#e8edfb]">Top Losers</h3>
+                <h3 className="font-display text-sm font-bold text-slate-900 dark:text-[#e8edfb]">Top Losers</h3>
               </div>
-              <span className="font-mono text-[10px] uppercase tracking-wider text-[#ff4d6d]">24h Laggards</span>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-rose-600 dark:text-[#ff4d6d]">24h Laggards</span>
             </div>
 
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
@@ -835,27 +853,27 @@ export const OverviewPage: React.FC<{
                     onClick={() => onSelectMarket(entry.marketId)}
                     className={`group flex flex-col justify-between gap-2 rounded-lg border p-2.5 text-left transition-colors min-w-0 ${
                       !up
-                        ? 'border-[#ff4d6d]/22 bg-[#140c16] hover:border-[#ff4d6d]/55 hover:bg-[#1e1020]'
-                        : 'border-slate-800/90 bg-[#0b1120] hover:border-slate-600 hover:bg-[#11192e]'
+                        ? 'border-rose-500/25 bg-white hover:border-rose-500/60 hover:bg-rose-50/35 dark:border-[#ff4d6d]/22 dark:bg-[#140c16] dark:hover:border-[#ff4d6d]/55 dark:hover:bg-[#1e1020]'
+                        : 'border-slate-200 bg-white hover:border-slate-400 dark:border-slate-800/90 dark:bg-[#0b1120] dark:hover:border-slate-600 dark:hover:bg-[#11192e]'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-1.5 w-full min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <TokenBadge symbol={entry.symbol} category={entry.sector} size={20} />
-                        <span className="font-display text-xs font-bold text-[#e8edfb] truncate group-hover:text-[#ff4d6d] transition-colors">
+                        <span className="font-display text-xs font-bold text-slate-900 truncate group-hover:text-rose-600 dark:text-[#e8edfb] dark:group-hover:text-[#ff4d6d] transition-colors">
                           {entry.symbol}
                         </span>
                         <span className="font-mono text-[9px] text-slate-500">#{idx + 1}</span>
                       </div>
-                      <MarketMoveMeter changePct={entry.changePct} width={36} height={14} />
+                      <MarketMiniChart series={miniCharts[entry.marketId]} changePct={entry.changePct} width={36} height={14} />
                     </div>
 
                     <div className="flex items-end justify-between gap-1.5 w-full">
                       <div className="min-w-0">
-                        <div className="font-mono text-[11px] font-semibold tabular-nums text-[#e8edfb] truncate">
+                        <div className="font-mono text-[11px] font-semibold tabular-nums text-slate-900 dark:text-[#e8edfb] truncate">
                           {formatPrice(entry.markPrice)}
                         </div>
-                        <div className="font-mono text-[9px] tabular-nums text-slate-400 truncate">
+                        <div className="font-mono text-[9px] tabular-nums text-slate-500 dark:text-slate-400 truncate">
                           Vol {formatUsd(entry.volume24h, true)}
                         </div>
                       </div>
@@ -863,8 +881,8 @@ export const OverviewPage: React.FC<{
                         <div
                           className={`inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 font-mono text-[11px] font-bold tabular-nums ${
                             up
-                              ? 'border-[#22e0a1]/35 bg-[#22e0a1]/16 text-[#22e0a1]'
-                              : 'border-[#ff4d6d]/35 bg-[#ff4d6d]/16 text-[#ff4d6d]'
+                              ? 'border-emerald-500/35 bg-emerald-500/12 text-emerald-700 dark:border-[#22e0a1]/35 dark:bg-[#22e0a1]/16 dark:text-[#22e0a1]'
+                              : 'border-rose-500/35 bg-rose-500/12 text-rose-700 dark:border-[#ff4d6d]/35 dark:bg-[#ff4d6d]/16 dark:text-[#ff4d6d]'
                           }`}
                         >
                           <span aria-hidden="true" className="text-[8px]">
@@ -872,7 +890,7 @@ export const OverviewPage: React.FC<{
                           </span>
                           {formatPct(entry.changePct)}
                         </div>
-                        <div className="mt-0.5 font-mono text-[9px] tabular-nums text-slate-400">
+                        <div className="mt-0.5 font-mono text-[9px] tabular-nums text-slate-500 dark:text-slate-400">
                           {entry.maxLeverage}x · {entry.group}
                         </div>
                       </div>
@@ -884,6 +902,8 @@ export const OverviewPage: React.FC<{
           </div>
         </div>
       </section>
+
+      <HistoricalInsights />
 
       {/* Analytical Visualization Row 1: DefiLlama TVL Chart + Perps vs RWA Sector Breakdown */}
       <section className="grid grid-cols-1 gap-5 lg:grid-cols-12">
@@ -901,40 +921,40 @@ export const OverviewPage: React.FC<{
         <div className="sunrise-card rounded-2xl p-4 sm:p-5 lg:col-span-5 flex flex-col justify-between space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Layers className="h-4 w-4 text-[#ffb02e]" />
-              <h2 className="font-display text-base font-bold text-[#e8edfb]">
+              <Layers className="h-4 w-4 text-amber-600 dark:text-[#ffb02e]" />
+              <h2 className="font-display text-base font-bold text-slate-900 dark:text-[#e8edfb]">
                 Perps vs RWA Breakdown
               </h2>
             </div>
             <button
               type="button"
               onClick={() => onNavigateTab('markets')}
-              className="text-xs font-mono text-[#ffb02e] hover:underline"
+              className="text-xs font-mono font-semibold text-amber-600 hover:underline dark:text-[#ffb02e]"
             >
               All Sectors →
             </button>
           </div>
 
           {/* Stacked Proportion Bars */}
-          <div className="space-y-3 rounded-xl border border-slate-800/80 bg-[#080d18] p-3">
+          <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/90 p-3 dark:border-slate-800/80 dark:bg-[#080d18]">
             <div>
               <div className="mb-1 flex justify-between text-[11px] font-mono">
-                <span className="text-[#22e0a1]">Crypto Perps {perpVolShare.toFixed(1)}% Vol</span>
-                <span className="text-[#46a6ff]">RWA {(100 - perpVolShare).toFixed(1)}% Vol</span>
+                <span className="text-emerald-600 dark:text-[#22e0a1]">Crypto Perps {perpVolShare.toFixed(1)}% Vol</span>
+                <span className="text-blue-600 dark:text-[#46a6ff]">RWA {(100 - perpVolShare).toFixed(1)}% Vol</span>
               </div>
-              <div className="flex h-2 w-full overflow-hidden rounded-full bg-slate-800">
-                <div className="bg-[#22e0a1]" style={{ width: `${perpVolShare}%` }} />
-                <div className="bg-[#46a6ff]" style={{ width: `${100 - perpVolShare}%` }} />
+              <div className="flex h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                <div className="bg-emerald-500 dark:bg-[#22e0a1]" style={{ width: `${perpVolShare}%` }} />
+                <div className="bg-blue-500 dark:bg-[#46a6ff]" style={{ width: `${100 - perpVolShare}%` }} />
               </div>
             </div>
             <div>
               <div className="mb-1 flex justify-between text-[11px] font-mono">
-                <span className="text-[#ffb02e]">Crypto Perps {perpOiShare.toFixed(1)}% OI</span>
-                <span className="text-[#8b7bff]">RWA {(100 - perpOiShare).toFixed(1)}% OI</span>
+                <span className="text-amber-600 dark:text-[#ffb02e]">Crypto Perps {perpOiShare.toFixed(1)}% OI</span>
+                <span className="text-violet-600 dark:text-[#8b7bff]">RWA {(100 - perpOiShare).toFixed(1)}% OI</span>
               </div>
-              <div className="flex h-2 w-full overflow-hidden rounded-full bg-slate-800">
-                <div className="bg-[#ffb02e]" style={{ width: `${perpOiShare}%` }} />
-                <div className="bg-[#8b7bff]" style={{ width: `${100 - perpOiShare}%` }} />
+              <div className="flex h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                <div className="bg-amber-500 dark:bg-[#ffb02e]" style={{ width: `${perpOiShare}%` }} />
+                <div className="bg-violet-500 dark:bg-[#8b7bff]" style={{ width: `${100 - perpOiShare}%` }} />
               </div>
             </div>
           </div>
@@ -944,12 +964,12 @@ export const OverviewPage: React.FC<{
             {sectorData.sectors.map((sec) => {
               const accent =
                 sec.id === 'crypto'
-                  ? 'border-[#22e0a1]/30'
+                  ? 'border-emerald-500/35 dark:border-[#22e0a1]/30'
                   : sec.id === 'stocks'
-                    ? 'border-[#46a6ff]/30'
+                    ? 'border-blue-500/35 dark:border-[#46a6ff]/30'
                     : sec.id === 'commodity'
-                      ? 'border-[#facc15]/30'
-                      : 'border-[#8b7bff]/30';
+                      ? 'border-amber-500/40 dark:border-[#facc15]/30'
+                      : 'border-violet-500/35 dark:border-[#8b7bff]/30';
               return (
                 <button
                   key={sec.id}
@@ -957,21 +977,21 @@ export const OverviewPage: React.FC<{
                   onClick={() =>
                     sec.topMarketId ? onSelectMarket(sec.topMarketId) : onNavigateTab('markets')
                   }
-                  className={`rounded-xl border ${accent} bg-[#090e1a] p-3 text-left hover:bg-[#11192e] transition-colors`}
+                  className={`rounded-xl border ${accent} bg-slate-50/80 p-3 text-left hover:bg-slate-100 dark:bg-[#090e1a] dark:hover:bg-[#11192e] transition-colors`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-display text-xs font-bold text-[#e8edfb]">{sec.label}</span>
-                    <span className="font-mono text-[10px] text-slate-400">{sec.count} mkts</span>
+                    <span className="font-display text-xs font-bold text-slate-900 dark:text-[#e8edfb]">{sec.label}</span>
+                    <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400">{sec.count} mkts</span>
                   </div>
-                  <div className="mt-2 font-mono text-sm font-bold tabular-nums text-[#ffb02e]">
+                  <div className="mt-2 font-mono text-sm font-bold tabular-nums text-amber-600 dark:text-[#ffb02e]">
                     {formatUsd(sec.volume24h, true)}
-                    <span className="ml-1.5 text-[10px] font-normal text-slate-400">
+                    <span className="ml-1.5 text-[10px] font-normal text-slate-500 dark:text-slate-400">
                       ({sec.volumeSharePct.toFixed(1)}%)
                     </span>
                   </div>
-                  <div className="mt-1 flex items-center justify-between text-[10px] font-mono text-slate-400">
+                  <div className="mt-1 flex items-center justify-between text-[10px] font-mono text-slate-500 dark:text-slate-400">
                     <span>OI {formatUsd(sec.openInterestUsd, true)}</span>
-                    <span className={sec.avgFundingAprPct >= 0 ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'}>
+                    <span className={sec.avgFundingAprPct >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'}>
                       {sec.avgFundingAprPct >= 0 ? '+' : ''}
                       {sec.avgFundingAprPct.toFixed(1)}% APR
                     </span>
@@ -988,51 +1008,51 @@ export const OverviewPage: React.FC<{
         {/* Trader Profitability */}
         <div className="sunrise-card rounded-2xl p-4 space-y-2.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-display font-bold text-[#e8edfb]">Indexed Trader Profitability</span>
-            <span className="font-mono text-xs font-bold text-[#22e0a1]">
+            <span className="text-xs font-display font-bold text-slate-900 dark:text-[#e8edfb]">Indexed Trader Profitability</span>
+            <span className="font-mono text-xs font-bold text-emerald-600 dark:text-[#22e0a1]">
               {prof ? `${prof.profitabilityPct.toFixed(1)}% Win` : '—'}
             </span>
           </div>
-          <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-800">
+          <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
             <div
-              className="bg-[#22e0a1]"
+              className="bg-emerald-500 dark:bg-[#22e0a1]"
               style={{ width: `${prof?.profitabilityPct ?? 50}%` }}
             />
             <div
-              className="bg-[#ff4d6d]"
+              className="bg-rose-500 dark:bg-[#ff4d6d]"
               style={{ width: `${100 - (prof?.profitabilityPct ?? 50)}%` }}
             />
           </div>
-          <div className="flex items-center justify-between font-mono text-[11px] tabular-nums text-slate-400">
-            <span className="text-[#22e0a1]">{prof?.inProfitCount.toLocaleString() || '0'} In Profit</span>
-            <span className="text-slate-300">Eq {formatUsd(prof?.totalEquityUsd, true)}</span>
-            <span className="text-[#ff4d6d]">{prof?.atLossCount.toLocaleString() || '0'} At Loss</span>
+          <div className="flex items-center justify-between font-mono text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
+            <span className="text-emerald-600 dark:text-[#22e0a1]">{prof?.inProfitCount.toLocaleString() || '0'} In Profit</span>
+            <span className="text-slate-700 dark:text-slate-300">Eq {formatUsd(prof?.totalEquityUsd, true)}</span>
+            <span className="text-rose-600 dark:text-[#ff4d6d]">{prof?.atLossCount.toLocaleString() || '0'} At Loss</span>
           </div>
         </div>
 
         {/* Long vs Short OI Bias */}
         <div className="sunrise-card rounded-2xl p-4 space-y-2.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-display font-bold text-[#e8edfb]">Indexed Open Interest Bias</span>
-            <span className="font-mono text-xs font-bold text-[#ffb02e]">
+            <span className="text-xs font-display font-bold text-slate-900 dark:text-[#e8edfb]">Indexed Open Interest Bias</span>
+            <span className="font-mono text-xs font-bold text-amber-600 dark:text-[#ffb02e]">
               {prof ? `${prof.longOiSharePct.toFixed(1)}% Long` : '—'}
             </span>
           </div>
-          <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-800">
+          <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
             <div
-              className="bg-[#22e0a1]"
+              className="bg-emerald-500 dark:bg-[#22e0a1]"
               style={{ width: `${prof?.longOiSharePct ?? 50}%` }}
             />
             <div
-              className="bg-[#ff4d6d]"
+              className="bg-rose-500 dark:bg-[#ff4d6d]"
               style={{ width: `${100 - (prof?.longOiSharePct ?? 50)}%` }}
             />
           </div>
-          <div className="flex items-center justify-between font-mono text-[11px] tabular-nums text-slate-400">
-            <span className="text-[#22e0a1]">
+          <div className="flex items-center justify-between font-mono text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
+            <span className="text-emerald-600 dark:text-[#22e0a1]">
               {formatUsd(prof?.longOiUsd, true)} ({prof?.longPositionsCount || 0}L)
             </span>
-            <span className="text-[#ff4d6d]">
+            <span className="text-rose-600 dark:text-[#ff4d6d]">
               {formatUsd(prof?.shortOiUsd, true)} ({prof?.shortPositionsCount || 0}S)
             </span>
           </div>
@@ -1041,24 +1061,24 @@ export const OverviewPage: React.FC<{
         {/* Live Taker Orderflow Ratio */}
         <div className="sunrise-card rounded-2xl p-4 space-y-2.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-display font-bold text-[#e8edfb]">Recent Taker Flow (last {liveTrades.length} fills)</span>
-            <span className="font-mono text-xs font-bold text-[#46a6ff]">
+            <span className="text-xs font-display font-bold text-slate-900 dark:text-[#e8edfb]">Recent Taker Flow (last {liveTrades.length} fills)</span>
+            <span className="font-mono text-xs font-bold text-blue-600 dark:text-[#46a6ff]">
               {takerFlow.totalUsd > 0 ? `${takerFlow.buySharePct.toFixed(1)}% Buy` : '—'}
             </span>
           </div>
-          <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-800">
+          <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
             {takerFlow.totalUsd > 0 && (
               <>
-                <div className="bg-[#22e0a1]" style={{ width: `${takerFlow.buySharePct}%` }} />
-                <div className="bg-[#ff4d6d]" style={{ width: `${takerFlow.sellSharePct}%` }} />
+                <div className="bg-emerald-500 dark:bg-[#22e0a1]" style={{ width: `${takerFlow.buySharePct}%` }} />
+                <div className="bg-rose-500 dark:bg-[#ff4d6d]" style={{ width: `${takerFlow.sellSharePct}%` }} />
               </>
             )}
           </div>
-          <div className="flex items-center justify-between font-mono text-[11px] tabular-nums text-slate-400">
-            <span className="text-[#22e0a1]">
+          <div className="flex items-center justify-between font-mono text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
+            <span className="text-emerald-600 dark:text-[#22e0a1]">
               {formatUsd(takerFlow.buyUsd, true)} ({takerFlow.buyCount})
             </span>
-            <span className="text-[#ff4d6d]">
+            <span className="text-rose-600 dark:text-[#ff4d6d]">
               {formatUsd(takerFlow.sellUsd, true)} ({takerFlow.sellCount})
             </span>
           </div>
@@ -1071,12 +1091,12 @@ export const OverviewPage: React.FC<{
         <div className="sunrise-card rounded-2xl p-4 sm:p-5 lg:col-span-6 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-[#ffb02e]" />
-              <h2 className="font-display text-base font-bold text-[#e8edfb]">
+              <BarChart3 className="h-4 w-4 text-amber-600 dark:text-[#ffb02e]" />
+              <h2 className="font-display text-base font-bold text-slate-900 dark:text-[#e8edfb]">
                 Open Interest Leaders
               </h2>
             </div>
-            <span className="font-mono text-[11px] text-slate-400">
+            <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
               Total {formatUsd(bundle?.totalOpenInterestUsd, true)}
             </span>
           </div>
@@ -1087,26 +1107,26 @@ export const OverviewPage: React.FC<{
                 key={item.marketId}
                 type="button"
                 onClick={() => onSelectMarket(item.marketId)}
-                className="group rounded-xl border border-slate-800/80 bg-[#090e1a] p-2.5 text-left hover:border-[#ffb02e]/45 hover:bg-[#11192e] transition-all"
+                className="group rounded-xl border border-slate-200 bg-slate-50/80 p-2.5 text-left hover:border-amber-500/60 hover:bg-amber-50/40 dark:border-slate-800/80 dark:bg-[#090e1a] dark:hover:border-[#ffb02e]/45 dark:hover:bg-[#11192e] transition-all"
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="font-mono text-[10px] text-slate-500 w-4">#{idx + 1}</span>
                     <TokenBadge symbol={item.symbol} category={item.category} size={22} />
-                    <span className="font-display text-xs font-bold text-[#e8edfb] truncate group-hover:text-[#ffb02e]">
+                    <span className="font-display text-xs font-bold text-slate-900 truncate group-hover:text-amber-600 dark:text-[#e8edfb] dark:group-hover:text-[#ffb02e]">
                       {item.symbol}
                     </span>
                   </div>
                   <div className="text-right font-mono tabular-nums">
-                    <div className="text-xs font-bold text-[#e8edfb]">
+                    <div className="text-xs font-bold text-slate-900 dark:text-[#e8edfb]">
                       {formatUsd(item.openInterestUsd, true)}
                     </div>
-                    <div className="text-[10px] text-slate-400">{item.sharePct.toFixed(1)}%</div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400">{item.sharePct.toFixed(1)}%</div>
                   </div>
                 </div>
-                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-800">
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-[#ffb02e] to-[#22e0a1]"
+                    className="h-full rounded-full bg-gradient-to-r from-amber-500 to-emerald-500 dark:from-[#ffb02e] dark:to-[#22e0a1]"
                     style={{ width: `${Math.max(4, item.relTopPct)}%` }}
                   />
                 </div>
@@ -1119,14 +1139,14 @@ export const OverviewPage: React.FC<{
         <div className="sunrise-card rounded-2xl p-4 sm:p-5 lg:col-span-6 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Flame className="h-4 w-4 text-[#ff6a3d]" />
-              <h2 className="font-display text-base font-bold text-[#e8edfb]">
+              <Flame className="h-4 w-4 text-orange-600 dark:text-[#ff6a3d]" />
+              <h2 className="font-display text-base font-bold text-slate-900 dark:text-[#e8edfb]">
                 Funding APR Heatmap
               </h2>
             </div>
             <div className="flex items-center gap-3 font-mono text-[10px]">
-              <span className="text-[#22e0a1]">+ Shorts Earn</span>
-              <span className="text-[#ff4d6d]">− Longs Earn</span>
+              <span className="text-emerald-600 dark:text-[#22e0a1]">+ Shorts Earn</span>
+              <span className="text-rose-600 dark:text-[#ff4d6d]">− Longs Earn</span>
             </div>
           </div>
 
@@ -1141,28 +1161,28 @@ export const OverviewPage: React.FC<{
                   onClick={() => onSelectMarket(item.marketId)}
                   style={{
                     backgroundColor: isPos
-                      ? `rgba(34, 224, 161, ${0.07 + intensity * 0.16})`
-                      : `rgba(255, 77, 109, ${0.07 + intensity * 0.16})`,
+                      ? `rgba(16, 185, 129, ${0.08 + intensity * 0.16})`
+                      : `rgba(244, 63, 94, ${0.08 + intensity * 0.16})`,
                   }}
                   className={`rounded-xl border p-2.5 text-left transition-transform hover:scale-[1.02] ${
-                    isPos ? 'border-[#22e0a1]/30' : 'border-[#ff4d6d]/30'
+                    isPos ? 'border-emerald-500/35 dark:border-[#22e0a1]/30' : 'border-rose-500/35 dark:border-[#ff4d6d]/30'
                   }`}
                 >
                   <div className="flex items-center justify-between gap-1">
                     <TokenBadge symbol={item.symbol} category={item.category} size={18} />
-                    <span className="font-display text-[11px] font-bold text-[#e8edfb] truncate">
+                    <span className="font-display text-[11px] font-bold text-slate-900 dark:text-[#e8edfb] truncate">
                       {item.symbol}
                     </span>
                   </div>
                   <div
                     className={`mt-2 font-mono text-xs font-bold tabular-nums ${
-                      isPos ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'
+                      isPos ? 'text-emerald-700 dark:text-[#22e0a1]' : 'text-rose-700 dark:text-[#ff4d6d]'
                     }`}
                   >
                     {item.aprPct >= 0 ? '+' : ''}
                     {item.aprPct.toFixed(1)}%
                   </div>
-                  <div className="font-mono text-[9px] text-slate-400">
+                  <div className="font-mono text-[9px] text-slate-600 dark:text-slate-400">
                     {item.rate1hPct >= 0 ? '+' : ''}
                     {item.rate1hPct.toFixed(4)}%/h
                   </div>
@@ -1173,77 +1193,29 @@ export const OverviewPage: React.FC<{
         </div>
       </section>
 
-      {/* Market Volume Heatmap Grid */}
-      <section className="sunrise-card rounded-2xl p-4 sm:p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-[#46a6ff]" />
-            <h2 className="font-display text-base font-bold text-[#e8edfb]">
-              24h Market Volume Heatmap
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={() => onNavigateTab('markets')}
-            className="text-xs font-mono text-[#ffb02e] hover:underline"
-          >
-            Full Screener →
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-8">
-          {volumeHeatmap.map((item, idx) => {
-            const up = item.changePct >= 0;
-            return (
-              <button
-                key={item.marketId}
-                type="button"
-                onClick={() => onSelectMarket(item.marketId)}
-                className={`rounded-xl border p-2.5 text-left transition-all hover:border-[#ffb02e]/55 ${
-                  up
-                    ? 'border-[#22e0a1]/25 bg-gradient-to-b from-[#22e0a1]/[0.08] to-[#080d18]'
-                    : 'border-[#ff4d6d]/25 bg-gradient-to-b from-[#ff4d6d]/[0.08] to-[#080d18]'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-1">
-                  <TokenBadge symbol={item.symbol} category={item.category} size={18} />
-                  <span className="font-mono text-[10px] text-slate-500">#{idx + 1}</span>
-                </div>
-                <div className="mt-1.5 font-display text-xs font-bold text-[#e8edfb] truncate">
-                  {item.symbol}
-                </div>
-                <div className="mt-0.5 font-mono text-xs font-bold tabular-nums text-[#ffb02e]">
-                  {formatUsd(item.volume24h, true)}
-                </div>
-                <div className="mt-0.5 flex items-center justify-between font-mono text-[10px] tabular-nums">
-                  <span className={up ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'}>
-                    {formatPct(item.changePct)}
-                  </span>
-                  <span className="text-slate-500">{item.sharePct.toFixed(1)}%</span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+      <MarketHeatmap
+        markets={markets}
+        onSelectMarket={onSelectMarket}
+        onOpenScreener={() => onNavigateTab('markets')}
+      />
 
       {/* Persistent Watchlist Strip */}
       <section className="space-y-2.5">
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-slate-300">
+          <h2 className="font-display text-sm font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
             Market Watchlist
           </h2>
           <div ref={watchMenuRef} className="relative">
             <button
               type="button"
               onClick={() => setAddWatchOpen((v) => !v)}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-700/60 bg-[#0e1526] px-2.5 py-1 text-xs text-slate-300 hover:border-[#ffb02e]/50 hover:text-[#ffb02e]"
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700 hover:border-amber-500/60 hover:text-amber-600 dark:border-slate-700/60 dark:bg-[#0e1526] dark:text-slate-300 dark:hover:border-[#ffb02e]/50 dark:hover:text-[#ffb02e]"
             >
               <Plus className="h-3.5 w-3.5" />
               Customize
             </button>
             {addWatchOpen && (
-              <div className="absolute right-0 top-full z-20 mt-1.5 max-h-64 w-64 overflow-y-auto rounded-xl border border-slate-700 bg-[#090e1a] p-2 shadow-2xl">
+              <div className="absolute right-0 top-full z-20 mt-1.5 max-h-64 w-64 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-2xl dark:border-slate-700 dark:bg-[#090e1a]">
                 {markets.map((m) => {
                   const id = String(m.market_id);
                   const checked = watchlistIds.includes(id);
@@ -1258,13 +1230,13 @@ export const OverviewPage: React.FC<{
                           updateWatchlist([...watchlistIds, id].slice(0, 8));
                         }
                       }}
-                      className="flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs hover:bg-[#131c31]"
+                      className="flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs hover:bg-slate-100 dark:hover:bg-[#131c31]"
                     >
-                      <span className="flex items-center gap-2 font-medium text-[#e8edfb]">
+                      <span className="flex items-center gap-2 font-medium text-slate-900 dark:text-[#e8edfb]">
                         <TokenBadge symbol={m.base_asset_symbol} category={m.category} size={18} />
                         {m.display_name}
                       </span>
-                      <span className={checked ? 'text-[#22e0a1] font-mono' : 'text-slate-500 font-mono'}>
+                      <span className={checked ? 'text-emerald-600 dark:text-[#22e0a1] font-mono' : 'text-slate-500 font-mono'}>
                         {checked ? 'PINNED' : '+ ADD'}
                       </span>
                     </button>
@@ -1284,16 +1256,16 @@ export const OverviewPage: React.FC<{
               <div
                 key={m.market_id}
                 onClick={() => onSelectMarket(String(m.market_id))}
-                className="sunrise-card group cursor-pointer rounded-xl p-4 hover:border-[#ffb02e]/45 transition-all"
+                className="sunrise-card group cursor-pointer rounded-xl p-4 hover:border-amber-500/50 dark:hover:border-[#ffb02e]/45 transition-all"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2.5">
                     <TokenBadge symbol={m.base_asset_symbol} category={m.category} size={30} />
                     <div>
-                      <div className="font-display text-sm font-bold text-[#e8edfb] group-hover:text-[#ffb02e] transition-colors">
+                      <div className="font-display text-sm font-bold text-slate-900 group-hover:text-amber-600 dark:text-[#e8edfb] dark:group-hover:text-[#ffb02e] transition-colors">
                         {m.display_name}
                       </div>
-                      <div className="text-[10px] font-mono text-slate-400">
+                      <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
                         OI {formatUsd(oiUsd, true)} · {m.config?.max_leverage}x
                       </div>
                     </div>
@@ -1304,7 +1276,7 @@ export const OverviewPage: React.FC<{
                       e.stopPropagation();
                       updateWatchlist(watchlistIds.filter((x) => x !== String(m.market_id)));
                     }}
-                    className="rounded p-0.5 text-slate-500 opacity-0 group-hover:opacity-100 hover:bg-slate-800 hover:text-slate-200"
+                    className="rounded p-0.5 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                     title="Remove from watchlist"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -1312,18 +1284,18 @@ export const OverviewPage: React.FC<{
                 </div>
                 <div className="mt-3 flex items-end justify-between">
                   <div>
-                    <div className="font-mono text-base font-bold tabular-nums text-[#e8edfb]">
+                    <div className="font-mono text-base font-bold tabular-nums text-slate-900 dark:text-[#e8edfb]">
                       {formatPrice(mark)}
                     </div>
                     <div
                       className={`font-mono text-xs font-semibold tabular-nums ${
-                        chg >= 0 ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'
+                        chg >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'
                       }`}
                     >
                       {formatPct(chg)}
                     </div>
                   </div>
-                  <MarketMoveMeter changePct={chg} />
+                  <MarketMiniChart series={miniCharts[String(m.market_id)]} changePct={chg} />
                 </div>
               </div>
             );
@@ -1332,25 +1304,25 @@ export const OverviewPage: React.FC<{
       </section>
 
       {/* Split: Live Fills + Top PnL Traders */}
-      <section className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+      <section className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-12">
         {/* Live Fills */}
-        <div className="sunrise-card rounded-2xl p-4 lg:col-span-6">
+        <div className="sunrise-card flex h-full flex-col rounded-2xl p-4 lg:col-span-6">
           <div className="mb-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Activity className="h-4 w-4 text-[#22e0a1]" />
-              <h2 className="font-display text-base font-bold text-[#e8edfb]">Live Market Fills</h2>
+              <Activity className="h-4 w-4 text-emerald-600 dark:text-[#22e0a1]" />
+              <h2 className="font-display text-base font-bold text-slate-900 dark:text-[#e8edfb]">Live Market Fills</h2>
             </div>
             <button
               type="button"
               onClick={() => onNavigateTab('explorer')}
-              className="text-xs text-[#ffb02e] hover:underline"
+              className="text-xs font-medium text-amber-600 hover:underline dark:text-[#ffb02e]"
             >
               Explorer Feed →
             </button>
           </div>
-          <div className="overflow-x-auto">
+          <div className="min-h-0 flex-1 max-h-[760px] overflow-x-auto overflow-y-auto" aria-label="Latest genuine RISEx trade fills">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400">
+              <thead className="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-[#080d18] dark:text-slate-400">
                 <tr>
                   <th className="py-2 pr-2">Market</th>
                   <th className="py-2 px-2">Side</th>
@@ -1359,8 +1331,8 @@ export const OverviewPage: React.FC<{
                   <th className="py-2 pl-2 text-right">Time</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 font-mono tabular-nums">
-                {liveTrades.slice(0, 10).map((tr, i) => {
+              <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 font-mono tabular-nums">
+                {liveTrades.slice(0, 30).map((tr, i) => {
                   const isBuy = tr.maker_side?.toLowerCase().includes('buy') || tr.maker_side === '0';
                   const usd = Number(tr.price) * Number(tr.size);
                   const mk = tr.market_id ? marketMetaById.get(String(tr.market_id)) : undefined;
@@ -1368,9 +1340,9 @@ export const OverviewPage: React.FC<{
                     <tr
                       key={`${tr.id}-${i}`}
                       onClick={() => tr.market_id && onSelectMarket(String(tr.market_id))}
-                      className="cursor-pointer hover:bg-[#131c31]/60 transition-colors"
+                      className="cursor-pointer hover:bg-slate-50 dark:hover:bg-[#131c31]/60 transition-colors"
                     >
-                      <td className="py-2 pr-2 font-sans font-medium text-[#e8edfb]">
+                      <td className="py-2 pr-2 font-sans font-medium text-slate-900 dark:text-[#e8edfb]">
                         <div className="flex items-center gap-2">
                           <TokenBadge
                             symbol={mk?.base_asset_symbol || tr.market_name || 'RISE'}
@@ -1381,12 +1353,12 @@ export const OverviewPage: React.FC<{
                         </div>
                       </td>
                       <td className="py-2 px-2">
-                        <span className={isBuy ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'}>
+                        <span className={isBuy ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'}>
                           {isBuy ? 'BUY' : 'SELL'}
                         </span>
                       </td>
-                      <td className="py-2 px-2 text-right text-slate-200">{formatPrice(tr.price)}</td>
-                      <td className="py-2 px-2 text-right text-slate-300">{formatUsd(usd, true)}</td>
+                      <td className="py-2 px-2 text-right text-slate-800 dark:text-slate-200">{formatPrice(tr.price)}</td>
+                      <td className="py-2 px-2 text-right text-slate-700 dark:text-slate-300">{formatUsd(usd, true)}</td>
                       <td className="py-2 pl-2 text-right text-slate-500">{formatTimeShort(tr.time)}</td>
                     </tr>
                   );
@@ -1404,23 +1376,23 @@ export const OverviewPage: React.FC<{
         </div>
 
         {/* Top PnL Traders */}
-        <div className="sunrise-card rounded-2xl p-4 lg:col-span-6">
+        <div className="sunrise-card flex h-full flex-col rounded-2xl p-4 lg:col-span-6">
           <div className="mb-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-[#ffb02e]" />
-              <h2 className="font-display text-base font-bold text-[#e8edfb]">Top Traders by PnL</h2>
+              <Users className="h-4 w-4 text-amber-600 dark:text-[#ffb02e]" />
+              <h2 className="font-display text-base font-bold text-slate-900 dark:text-[#e8edfb]">Top Traders by PnL</h2>
             </div>
             <button
               type="button"
               onClick={() => onNavigateTab('leaderboard')}
-              className="text-xs text-[#ffb02e] hover:underline"
+              className="text-xs font-medium text-amber-600 hover:underline dark:text-[#ffb02e]"
             >
               Full Leaderboard →
             </button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400">
+              <thead className="border-b border-slate-200 text-[11px] uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:text-slate-400">
                 <tr>
                   <th className="py-2 pr-2">#</th>
                   <th className="py-2 px-2">Trader</th>
@@ -1429,57 +1401,70 @@ export const OverviewPage: React.FC<{
                   <th className="py-2 pl-2 text-right">Peek</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 tabular-nums">
-                {topTraders.slice(0, 10).map((t, idx) => (
-                  <tr
-                    key={t.address}
-                    onClick={() => onSelectWallet(t.address)}
-                    className="cursor-pointer hover:bg-[#131c31]/60 transition-colors"
-                  >
-                    <td className="py-2 pr-2 font-mono text-slate-400">{idx + 1}</td>
-                    <td className="py-2 px-2">
-                      <div className="flex items-center gap-2">
-                        <TraderAvatar
-                          address={t.address}
-                          avatarUrl={t.avatarUrl}
-                          username={t.username}
-                          size={24}
-                        />
-                        <div className="min-w-0">
-                          <div className="truncate font-medium text-[#e8edfb] max-w-[150px]">
-                            {t.username || shortAddress(t.address)}
-                          </div>
-                          <div className="font-mono text-[10px] text-slate-500">
-                            {shortAddress(t.address, 6, 4)}
+              <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 tabular-nums">
+                {topTraders.slice(0, 15).map((t, idx) => {
+                  const info = formatTraderDisplay(t.address, t.username);
+                  return (
+                    <tr
+                      key={t.address}
+                      onClick={() => onSelectWallet(t.address)}
+                      className="cursor-pointer hover:bg-slate-50 dark:hover:bg-[#131c31]/60 transition-colors"
+                    >
+                      <td className="py-2 pr-2 font-mono text-slate-500 dark:text-slate-400">{idx + 1}</td>
+                      <td className="py-2 px-2">
+                        <div className="flex items-center gap-2">
+                          <TraderAvatar
+                            address={t.address}
+                            avatarUrl={t.avatarUrl}
+                            username={info.displayName}
+                            size={24}
+                          />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="truncate font-medium text-slate-900 dark:text-[#e8edfb] max-w-[150px]">
+                                {info.displayName}
+                              </span>
+                              {info.badgeLabel && (
+                                <span className="text-[10px] font-mono font-semibold text-violet-600 dark:text-[#8b7bff]">
+                                  · {info.badgeLabel}
+                                </span>
+                              )}
+                            </div>
+                            <div className="font-mono text-[10px] text-slate-500">
+                              {shortAddress(t.address, 6, 4)}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-2 px-2 text-right font-mono text-slate-200">
-                      {t.accountValue > 0 ? formatUsd(t.accountValue, true) : '—'}
-                    </td>
-                    <td
-                      className={`py-2 px-2 text-right font-mono font-semibold ${
-                        t.totalPnlAll >= 0 ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'
-                      }`}
-                    >
-                      {formatSignedUsd(t.totalPnlAll, true)}
-                    </td>
-                    <td className="py-2 pl-2 text-right">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onPeekTrader(t.address, t);
-                        }}
-                        title="Quick peek trader"
-                        className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-[#ffb02e]"
+                      </td>
+                      <td className="py-2 px-2 text-right font-mono text-slate-800 dark:text-slate-200">
+                        {t.accountValue > 0 ? formatUsd(t.accountValue, true) : '—'}
+                      </td>
+                      <td
+                        className={`py-2 px-2 text-right font-mono font-semibold ${
+                          t.totalPnlAll >= 0
+                            ? 'text-emerald-600 dark:text-[#22e0a1]'
+                            : 'text-rose-600 dark:text-[#ff4d6d]'
+                        }`}
                       >
-                        <Eye className="h-3.5 w-3.5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                        {formatSignedUsd(t.totalPnlAll, true)}
+                      </td>
+                      <td className="py-2 pl-2 text-right">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onPeekTrader(t.address, t);
+                          }}
+                          title="Quick peek trader"
+                          aria-label={`Quick peek ${info.displayName}`}
+                          className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-amber-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-[#ffb02e]"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

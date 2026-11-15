@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   buildFundingHeatmap,
   buildMarketDashboard,
+  buildMarketHeatmap,
   buildMarketSectors,
   buildOpenInterestLeaders,
   computeProfitabilitySummary,
@@ -266,4 +267,51 @@ test('gainer/loser ranking never labels a rising ticker a loser or a falling tic
   ]);
   assert.equal(allRed.gainers.length,0);
   assert.equal(allRed.losers.length,2);
+});
+
+test('buildMarketHeatmap ranks volatility and volume intensity accurately across filters', () => {
+  const markets = [
+    mkMarket({
+      market_id: '1',
+      base_asset_symbol: 'BTC/USDC',
+      category: 'crypto',
+      mark_price: '100',
+      change_24h: '2',
+      quote_volume_24h: '10000000',
+      open_interest: '1000',
+    }),
+    mkMarket({
+      market_id: '2',
+      base_asset_symbol: 'HYPE/USDC',
+      category: 'crypto',
+      mark_price: '50',
+      change_24h: '6', // +13.64%
+      quote_volume_24h: '2000000',
+      open_interest: '500',
+    }),
+    mkMarket({
+      market_id: '3',
+      base_asset_symbol: 'NVDA/USDC',
+      category: 'stocks',
+      mark_price: '90',
+      change_24h: '-10', // -10%
+      quote_volume_24h: '1000000',
+      open_interest: '200',
+    }),
+  ];
+
+  const byVol = buildMarketHeatmap(markets, 'all', 'volume', 40);
+  assert.equal(byVol.tiles[0].symbol, 'BTC');
+  assert.equal(byVol.tiles[0].tier, 'xl');
+  assert.equal(byVol.tiles[0].volumeIntensity, 1);
+  assert.ok(byVol.tiles[1].volumeIntensity > 0.8 && byVol.tiles[1].volumeIntensity < 1);
+  assert.equal(byVol.peakVolatilitySymbol, 'HYPE');
+
+  const byVolatility = buildMarketHeatmap(markets, 'all', 'volatility', 40);
+  assert.equal(byVolatility.tiles[0].symbol, 'HYPE');
+  assert.equal(byVolatility.tiles[1].symbol, 'NVDA');
+
+  const rwaOnly = buildMarketHeatmap(markets, 'rwa', 'volume', 40);
+  assert.equal(rwaOnly.tiles.length, 1);
+  assert.equal(rwaOnly.tiles[0].symbol, 'NVDA');
 });

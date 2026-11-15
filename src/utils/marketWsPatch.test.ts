@@ -75,8 +75,8 @@ test('parseWsMarketMessage parses trades, orderbook, and funding messages cleanl
     type: 'snapshot',
     data: {
       market_id: 1,
-      bids: [{ price: '91990000000000000000000', quantity: '2000000000000000000' }],
-      asks: [{ price: '92010000000000000000000', quantity: '1500000000000000000' }],
+      bids: [{ price: '91990', quantity: '2' }],
+      asks: [{ price: '92010', quantity: '1.5' }],
     },
   });
   assert.equal(bookFrames.length, 1);
@@ -267,13 +267,13 @@ test('unchanged repeated oracle frames do not cause new market array references 
   assert.equal(result.markets[0],market);
 });
 
-test('RISEx WebSocket L2 book deltas use 18-decimal wei including zero-size deletes', () => {
+test('RISEx WebSocket L2 book deltas use decimal strings including zero-size deletes', () => {
   const cache: OrderbookCache = new Map();
   const msg = (type: string, bids: unknown[], asks: unknown[]) =>
     parseWsMarketMessage({channel:'orderbook',type,data:{market_id:'1',bids,asks}});
   const snapshot=msg('snapshot',
-    [{price:'50000000000000000000000',quantity:'1000000000000000000'}],
-    [{price:'50200000000000000000000',quantity:'2000000000000000000'}]);
+    [{price:'50000',quantity:'1'}],
+    [{price:'50200',quantity:'2'}]);
   assert.equal(snapshot.length,1);
   assert.equal(snapshot[0].kind,'orderbook');
   if (snapshot[0].kind !== 'orderbook') return;
@@ -281,17 +281,17 @@ test('RISEx WebSocket L2 book deltas use 18-decimal wei including zero-size dele
   assert.equal(cache.get('1')?.bids.get(50000),1);
   assert.equal(cache.get('1')?.asks.get(50200),2);
   const delta=msg('update',
-    [{price:'50000000000000000000000',quantity:'0'},
-     {price:'49950000000000000000000',quantity:'750000000000000000'}],
+    [{price:'50000',quantity:'0'},
+     {price:'49950.5',quantity:'0.75'}],
     []);
   assert.equal(delta[0].kind,'orderbook');
   if (delta[0].kind !== 'orderbook') return;
-  assert.equal(updateOrderbookAndGetMid(cache,delta[0]), 50075);
+  assert.equal(updateOrderbookAndGetMid(cache,delta[0]), 50075.25);
   assert.equal(cache.get('1')?.bids.has(50000),false);
-  assert.equal(cache.get('1')?.bids.get(49950),0.75);
-  // Decimal trade/REST strings must never be mistaken for wei L2 values.
+  assert.equal(cache.get('1')?.bids.get(49950.5),0.75);
+  // Malformed or negative price/quantity strings must be rejected cleanly.
   const invalid=msg('update',
-    [{price:'49950.0',quantity:'0.5'}],[]);
+    [{price:'-49950.0',quantity:'0.5'}],[]);
   assert.equal(invalid.length,0);
 });
 

@@ -108,6 +108,39 @@ export interface MarketDashboardData {
   losers: MarketDashboardEntry[];
 }
 
+export type MarketHeatmapSort = 'volume' | 'volatility' | 'oi';
+
+export interface MarketHeatmapTile {
+  marketId: string;
+  symbol: string;
+  displayName: string;
+  sector: MarketSectorId;
+  group: 'PERP' | 'RWA';
+  markPrice: number;
+  changePct: number;
+  volatilityAbsPct: number;
+  volatilityIntensity: number; // 0..1 calibrated up to 10% move
+  volume24h: number;
+  volumeSharePct: number;
+  volumeIntensity: number; // 0..1 log-scaled intensity
+  openInterestUsd: number;
+  fundingAprPct: number;
+  tier: 'xl' | 'lg' | 'md' | 'sm';
+}
+
+export interface MarketHeatmapData {
+  filter: DashboardSectorFilter;
+  sortBy: MarketHeatmapSort;
+  tiles: MarketHeatmapTile[];
+  totalVolume24h: number;
+  totalOpenInterestUsd: number;
+  avgVolatilityPct: number;
+  peakVolatilitySymbol: string | null;
+  peakVolatilityPct: number;
+  advancers: number;
+  decliners: number;
+}
+
 function toNum(v: unknown): number {
   const n = Number(v);
   return Number.isFinite(n) ? n : 0;
@@ -489,4 +522,110 @@ export function buildMarketDashboard(
     losers,
   };
 }
+
+export function buildMarketHeatmap(
+  markets: RisexMarket[],
+  filter: DashboardSectorFilter = 'all',
+  sortBy: MarketHeatmapSort = 'volume',
+  limit = 40
+): MarketHeatmapData {
+  const rows: Omit<MarketHeatmapTile, 'volumeSharePct' | 'volumeIntensity' | 'tier'>[] = [];
+  let totalVolume24h = 0;
+  let totalOpenInterestUsd = 0;
+  let advancers = 0;
+  let decliners = 0;
+  let absVolSum = 0;
+  let peakVolatilityPct = 0;
+  let peakVolatilitySymbol: string | null = null;
+
+  for (const m of markets) {
+    if (m.active === false) continue;
+    const markPrice = toNum(m.mark_price || m.last_price);
+    if (markPrice <= 0) continue;
+
+    const sector = normalizeMarketSector(m.category, m.base_asset_symbol);
+    const group: 'PERP' | 'RWA' = sector === 'crypto' ? 'PERP' : 'RWA';
+    if (filter === 'crypto' && group !== 'PERP') continue;
+    if (filter === 'rwa' && group !== 'RWA') continue;
+
+    const volume24h = Math.max(0, toNum(m.quote_volume_24h));
+    const openInterestUsd = Math.max(0, toNum(m.open_interest) * markPrice);
+    const changePct = calcMarketChangePct(markPrice, m.change_24h);
+    const volatilityAbsPct = Math.abs(changePct);
+    const volatilityIntensity = Math.min(1, volatilityAbsPct / 10);
+    const symbol = cleanBaseSymbol(m.base_asset_symbol || m.display_name);
+
+    totalVolume24h += volume24h;
+    totalOpenInterestUsd += openInterestUsd;
+    absVolSum += volatilityAbsPct;
+    if (changePct > 0) advancers += 1;
+    else if (changePct < 0) decliners += 1;
+    if (volatilityAbsPct >= peakVolatilityPct) {
+      peakVolatilityPct = volatilityAbsPct;
+      peakVolatilitySymbol = symbol;
+    }
+
+    rows.push({
+      marketId: String(m.market_id),
+      symbol,
+      displayName: m.display_name || m.base_asset_symbol,
+      sector,
+      group,
+      markPrice,
+      changePct,
+      volatilityAbsPct,
+      volatilityIntensity,
+      volume24h,
+      openInterestUsd,
+      fundingAprPct: toNum(m.current_funding_rate) * 24 * 365 * 100,
+    });
+  }
+
+  const sorted = [...rows].sort((a, b) => {
+    if (sortBy === 'volatility') {
+      return b.volatilityAbsPct - a.volatilityAbsPct || b.volume24h - a.volume24h;
+    }
+    if (sortBy === 'oi') {
+      return b.openInterestUsd - a.openInterestUsd || b.volume24h - a.volume24h;
+    }
+    return b.volume24h - a.volume24h || b.volatilityAbsPct - a.volatilityAbsPct;
+  });
+
+  const maxMetric = sorted.reduce((mx, r) => {
+    const val = sortBy === 'oi' ? r.openInterestUsd : r.volume24h;
+    return Math.max(mx, val);
+  }, 0);
+  const logDenom = Math.log10(maxMetric + 1);
+
+  const tiles: MarketHeatmapTile[] = sorted.slice(0, limit).map((row, idx) => {
+    const volSharePct = totalVolume24h > 0 ? (row.volume24h / totalVolume24h) * 100 : 0;
+    const metricVal = sortBy === 'oi' ? row.openInterestUsd : row.volume24h;
+    const volumeIntensity =
+      logDenom > 0 && metricVal > 0
+        ? Math.min(1, Math.max(0.08, Math.log10(metricVal + 1) / logDenom))
+        : 0;
+    const tier: MarketHeatmapTile['tier'] =
+      idx < 2 ? 'xl' : idx < 6 ? 'lg' : idx < 16 ? 'md' : 'sm';
+    return {
+      ...row,
+      volumeSharePct: volSharePct,
+      volumeIntensity,
+      tier,
+    };
+  });
+
+  return {
+    filter,
+    sortBy,
+    tiles,
+    totalVolume24h,
+    totalOpenInterestUsd,
+    avgVolatilityPct: rows.length > 0 ? absVolSum / rows.length : 0,
+    peakVolatilitySymbol,
+    peakVolatilityPct,
+    advancers,
+    decliners,
+  };
+}
+
 
