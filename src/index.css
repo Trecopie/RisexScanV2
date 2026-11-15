@@ -1,0 +1,126 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --font-display: 'Outfit', system-ui, sans-serif;
+    --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    --bg: #05070d;
+    --bg1: #090e1a;
+    --sur: #0e1526;
+    --sur2: #131c31;
+    --line: rgba(148, 163, 205, 0.15);
+    --line2: rgba(148, 163, 205, 0.28);
+    --tx: #e8edfb;
+    --dim: #95a3c5;
+    --faint: #5d6987;
+    --sun: #ffb02e;
+    --dawn: #ff6a3d;
+    --flare: #ff3d81;
+    --long: #22e0a1;
+    --short: #ff4d6d;
+    --info: #46a6ff;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #05070d;
+    color: #e8edfb;
+    letter-spacing: 0.005em;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+  }
+
+  .font-mono, code, pre {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.sunrise-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(900px 420px at 85% -15%, rgba(255, 176, 46, 0.06), transparent 65%),
+    #060911;
+}
+
+.sunrise-card {
+  background: #0a0f1c;
+  border: 1px solid rgba(148, 163, 205, 0.13);
+}
+
+.sunrise-gradient-text {
+  color: #ffb02e;
+}
+
+.sunrise-gradient-btn {
+  background: #ffb02e;
+  color: #160a02;
+}
+
+.sunrise-gradient-btn:hover {
+  background: #ffbe4f;
+}
+
+@keyframes ticker-scroll {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.ticker-wrap {
+  mask-image: linear-gradient(to right, transparent, #000 20px, #000 calc(100% - 20px), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 20px, #000 calc(100% - 20px), transparent);
+}
+
+.ticker-track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  will-change: transform;
+  backface-visibility: hidden;
+  animation: ticker-scroll 52s linear infinite;
+}
+
+.ticker-wrap:hover .ticker-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #090e1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #293552;
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #ffb02e;
+}
