@@ -22,12 +22,12 @@ function mulberry32(seed: number) {
 }
 
 const IDENTICON_PALETTES = [
-  ['#ffb02e', '#ff6a3d'],
+  ['#38bdf8', '#22e0a1'],
   ['#22e0a1', '#46a6ff'],
-  ['#ff3d81', '#ffb02e'],
-  ['#8b7bff', '#46a6ff'],
-  ['#22e0a1', '#ffb02e'],
-  ['#ff6a3d', '#ff3d81'],
+  ['#8b7bff', '#38bdf8'],
+  ['#0ea5e9', '#2dd4bf'],
+  ['#22e0a1', '#0284c7'],
+  ['#6366f1', '#ec4899'],
 ];
 
 export const TraderAvatar: React.FC<{
@@ -130,7 +130,7 @@ export const LiqDistanceBadge: React.FC<{
   }
   if (clamped < 20) {
     return (
-      <span className="inline-flex items-center gap-1 rounded bg-amber-500/12 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-amber-700 border border-amber-500/30 dark:bg-[#ffb02e]/15 dark:text-[#ffb02e] dark:border-[#ffb02e]/30">
+      <span className="inline-flex items-center gap-1 rounded bg-orange-500/12 px-1.5 py-0.5 text-[10px] font-mono font-semibold text-orange-700 border border-orange-500/30 dark:bg-orange-400/15 dark:text-orange-300 dark:border-orange-400/30">
         {clamped.toFixed(1)}% NEAR
       </span>
     );
@@ -158,7 +158,7 @@ export const CopyBtn: React.FC<{ text: string; className?: string }> = ({ text, 
       type="button"
       onClick={handleCopy}
       title="Copy to clipboard"
-      className={`inline-flex items-center justify-center rounded p-1 text-slate-500 hover:bg-slate-200/70 hover:text-amber-600 dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-[#ffb02e] transition-colors ${className}`}
+      className={`inline-flex items-center justify-center rounded p-1 text-slate-500 hover:bg-slate-200/70 hover:text-sky-600 dark:text-slate-400 dark:hover:bg-slate-800/80 dark:hover:text-sky-400 transition-colors ${className}`}
     >
       {copied ? <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-[#22e0a1]" /> : <Copy className="h-3.5 w-3.5" />}
     </button>

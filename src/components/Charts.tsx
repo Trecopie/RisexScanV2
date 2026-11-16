@@ -60,7 +60,7 @@ export const CandlestickChart: React.FC<{
 
   const upCol = isDark ? '#22e0a1' : '#059669';
   const downCol = isDark ? '#ff4d6d' : '#e11d48';
-  const accentCol = isDark ? '#ffb02e' : '#d97706';
+  const accentCol = isDark ? '#38bdf8' : '#0284c7';
 
   return (
     <div className="relative select-none rounded-xl border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800/80 dark:bg-[#090e1a]">
@@ -75,7 +75,7 @@ export const CandlestickChart: React.FC<{
             {formatPrice(activeCandle.close)}
           </strong>
         </span>
-        <span>Vol: <strong className="text-amber-600 dark:text-[#ffb02e]">{activeCandle.volume.toFixed(3)}</strong></span>
+        <span>Vol: <strong className="text-sky-600 dark:text-sky-400">{activeCandle.volume.toFixed(3)}</strong></span>
       </div>
 
       <svg
@@ -328,7 +328,7 @@ export const AreaPerformanceChart: React.FC<{
               x2={getX(hoverIdx)}
               y1={padT}
               y2={padT + cH}
-              stroke={isDark ? '#ffb02e' : '#d97706'}
+              stroke={isDark ? '#38bdf8' : '#0284c7'}
               strokeOpacity={0.6}
               strokeDasharray="3 3"
             />

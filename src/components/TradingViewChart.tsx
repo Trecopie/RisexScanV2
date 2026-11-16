@@ -32,6 +32,7 @@ import {
   type ISeriesApi,
   type Time,
 } from 'lightweight-charts';
+import { useTheme } from '../context/ThemeContext';
 import type { MarketCandle } from '../types/risex';
 import { formatDateTime, formatPrice } from '../utils/format';
 import {
@@ -114,10 +115,10 @@ const DEFAULT_SETTINGS: IndicatorSettings = {
     enabled: true,
     visible: true,
     slots: [
-      { id: 'e1', period: 9, color: '#ffb02e', visible: true },
-      { id: 'e2', period: 21, color: '#46a6ff', visible: true },
+      { id: 'e1', period: 9, color: '#0ea5e9', visible: true },
+      { id: 'e2', period: 21, color: '#6366f1', visible: true },
       { id: 'e3', period: 50, color: '#c084fc', visible: true },
-      { id: 'e4', period: 100, color: '#38bdf8', visible: true },
+      { id: 'e4', period: 100, color: '#14b8a6', visible: true },
       { id: 'e5', period: 200, color: '#f472b6', visible: true },
     ],
   },
@@ -126,8 +127,8 @@ const DEFAULT_SETTINGS: IndicatorSettings = {
     visible: true,
     period: 10,
     multiplier: 3,
-    upColor: '#22e0a1',
-    downColor: '#ff4d6d',
+    upColor: '#10b981',
+    downColor: '#f43f5e',
   },
   rsi: {
     enabled: true,
@@ -135,20 +136,20 @@ const DEFAULT_SETTINGS: IndicatorSettings = {
     period: 14,
     overbought: 70,
     oversold: 30,
-    color: '#a78bfa',
+    color: '#8b5cf6',
   },
   sma: {
     enabled: false,
     visible: true,
     period: 20,
-    color: '#e2e8f0',
+    color: '#64748b',
   },
   bb: {
     enabled: false,
     visible: true,
     period: 20,
     stdDev: 2,
-    color: '#38bdf8',
+    color: '#0ea5e9',
   },
   vwap: {
     enabled: false,
@@ -224,7 +225,7 @@ interface ChartDrawing {
 }
 
 const FIB_LEVELS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1];
-const COLOR_PRESETS = ['#ffb02e', '#46a6ff', '#c084fc', '#38bdf8', '#f472b6', '#22e0a1', '#ff4d6d', '#e2e8f0'];
+const COLOR_PRESETS = ['#0ea5e9', '#6366f1', '#c084fc', '#14b8a6', '#f472b6', '#10b981', '#f43f5e', '#64748b'];
 
 function formatAxisPrice(p: number): string {
   if (!Number.isFinite(p)) return '0';
@@ -251,6 +252,7 @@ export const TradingViewChart: React.FC<{
   onResolutionChange: (res: string) => void;
   liveMarkPrice?: number;
 }> = ({ marketId, symbol, candles, historyRevision = 0, resolution, onResolutionChange, liveMarkPrice }) => {
+  const { isDark } = useTheme();
   const [chartMode, setChartMode] = useState<'candle' | 'area'>('candle');
   const [scaleMode, setScaleMode] = useState<'normal' | 'log'>('normal');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -393,35 +395,35 @@ export const TradingViewChart: React.FC<{
       width: initW,
       height: initH,
       layout: {
-        background: { type: ColorType.Solid, color: '#070b14' },
-        textColor: '#8d9bb8',
+        background: { type: ColorType.Solid, color: isDark ? '#070b14' : '#ffffff' },
+        textColor: isDark ? '#8d9bb8' : '#475569',
         fontFamily: 'JetBrains Mono, monospace',
         fontSize: 11,
         panes: {
-          separatorColor: 'rgba(148, 163, 205, 0.14)',
-          separatorHoverColor: 'rgba(255, 176, 46, 0.45)',
+          separatorColor: isDark ? 'rgba(148, 163, 205, 0.14)' : 'rgba(15, 23, 42, 0.12)',
+          separatorHoverColor: isDark ? 'rgba(56, 189, 248, 0.45)' : 'rgba(2, 132, 199, 0.45)',
           enableResize: true,
         },
       },
       grid: {
-        vertLines: { color: 'rgba(148, 163, 205, 0.06)' },
-        horzLines: { color: 'rgba(148, 163, 205, 0.06)' },
+        vertLines: { color: isDark ? 'rgba(148, 163, 205, 0.06)' : 'rgba(15, 23, 42, 0.05)' },
+        horzLines: { color: isDark ? 'rgba(148, 163, 205, 0.06)' : 'rgba(15, 23, 42, 0.05)' },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
         vertLine: {
-          color: 'rgba(255, 176, 46, 0.5)',
+          color: isDark ? 'rgba(56, 189, 248, 0.55)' : 'rgba(2, 132, 199, 0.55)',
           style: LineStyle.Dashed,
-          labelBackgroundColor: '#172033',
+          labelBackgroundColor: isDark ? '#172033' : '#1e293b',
         },
         horzLine: {
-          color: 'rgba(255, 176, 46, 0.5)',
+          color: isDark ? 'rgba(56, 189, 248, 0.55)' : 'rgba(2, 132, 199, 0.55)',
           style: LineStyle.Dashed,
-          labelBackgroundColor: '#172033',
+          labelBackgroundColor: isDark ? '#172033' : '#1e293b',
         },
       },
       rightPriceScale: {
-        borderColor: 'rgba(148, 163, 205, 0.12)',
+        borderColor: isDark ? 'rgba(148, 163, 205, 0.12)' : 'rgba(15, 23, 42, 0.12)',
         mode: scaleMode === 'log' ? PriceScaleMode.Logarithmic : PriceScaleMode.Normal,
         scaleMargins: {
           top: 0.1,
@@ -429,7 +431,7 @@ export const TradingViewChart: React.FC<{
         },
       },
       timeScale: {
-        borderColor: 'rgba(148, 163, 205, 0.12)',
+        borderColor: isDark ? 'rgba(148, 163, 205, 0.12)' : 'rgba(15, 23, 42, 0.12)',
         timeVisible: true,
         secondsVisible: resolution === '1m',
         rightOffset: 8,
@@ -444,21 +446,24 @@ export const TradingViewChart: React.FC<{
     chartRef.current = chart;
     const { precision, minMove } = getPricePrecision(bars);
 
+    const upCandle = isDark ? '#22e0a1' : '#059669';
+    const downCandle = isDark ? '#ff4d6d' : '#e11d48';
+
     const mainSeries =
       chartMode === 'candle'
         ? chart.addSeries(CandlestickSeries, {
-            upColor: '#22e0a1',
-            downColor: '#ff4d6d',
-            borderUpColor: '#22e0a1',
-            borderDownColor: '#ff4d6d',
-            wickUpColor: '#22e0a1',
-            wickDownColor: '#ff4d6d',
+            upColor: upCandle,
+            downColor: downCandle,
+            borderUpColor: upCandle,
+            borderDownColor: downCandle,
+            wickUpColor: upCandle,
+            wickDownColor: downCandle,
             priceFormat: { type: 'price', precision, minMove },
           })
         : chart.addSeries(AreaSeries, {
-            lineColor: '#ffb02e',
-            topColor: 'rgba(255, 176, 46, 0.25)',
-            bottomColor: 'rgba(255, 176, 46, 0.02)',
+            lineColor: isDark ? '#38bdf8' : '#0284c7',
+            topColor: isDark ? 'rgba(56, 189, 248, 0.28)' : 'rgba(2, 132, 199, 0.22)',
+            bottomColor: isDark ? 'rgba(56, 189, 248, 0.02)' : 'rgba(2, 132, 199, 0.01)',
             lineWidth: 2,
             priceFormat: { type: 'price', precision, minMove },
           });
@@ -619,7 +624,7 @@ export const TradingViewChart: React.FC<{
       macdLine.setData(indicatorData.macd.macd.map((d) => ({ time: d.time as Time, value: d.value })));
       indicatorSeriesRef.current.push({key:'macd:macd',series:macdLine});
       const signalLine = macdPane.addSeries(LineSeries, {
-        color: '#ffb02e',
+        color: '#2dd4bf',
         lineWidth: 1.5 as any,
         priceLineVisible: false,
         lastValueVisible: false,
@@ -674,6 +679,63 @@ export const TradingViewChart: React.FC<{
       indicatorSeriesRef.current = [];
     };
   }, [marketId, resolution, chartMode, scaleMode, settingsSig, bars.length > 0]);
+
+  // Apply White / Dark mode theme updates in-place without resetting chart scroll/zoom
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    chart.applyOptions({
+      layout: {
+        background: { type: ColorType.Solid, color: isDark ? '#070b14' : '#ffffff' },
+        textColor: isDark ? '#8d9bb8' : '#475569',
+        panes: {
+          separatorColor: isDark ? 'rgba(148, 163, 205, 0.14)' : 'rgba(15, 23, 42, 0.12)',
+          separatorHoverColor: isDark ? 'rgba(56, 189, 248, 0.45)' : 'rgba(2, 132, 199, 0.45)',
+        },
+      },
+      grid: {
+        vertLines: { color: isDark ? 'rgba(148, 163, 205, 0.06)' : 'rgba(15, 23, 42, 0.05)' },
+        horzLines: { color: isDark ? 'rgba(148, 163, 205, 0.06)' : 'rgba(15, 23, 42, 0.05)' },
+      },
+      crosshair: {
+        vertLine: {
+          color: isDark ? 'rgba(56, 189, 248, 0.55)' : 'rgba(2, 132, 199, 0.55)',
+          labelBackgroundColor: isDark ? '#172033' : '#1e293b',
+        },
+        horzLine: {
+          color: isDark ? 'rgba(56, 189, 248, 0.55)' : 'rgba(2, 132, 199, 0.55)',
+          labelBackgroundColor: isDark ? '#172033' : '#1e293b',
+        },
+      },
+      rightPriceScale: {
+        borderColor: isDark ? 'rgba(148, 163, 205, 0.12)' : 'rgba(15, 23, 42, 0.12)',
+      },
+      timeScale: {
+        borderColor: isDark ? 'rgba(148, 163, 205, 0.12)' : 'rgba(15, 23, 42, 0.12)',
+      },
+    });
+    if (mainSeriesRef.current) {
+      if (chartMode === 'candle') {
+        const upCandle = isDark ? '#22e0a1' : '#059669';
+        const downCandle = isDark ? '#ff4d6d' : '#e11d48';
+        mainSeriesRef.current.applyOptions({
+          upColor: upCandle,
+          downColor: downCandle,
+          borderUpColor: upCandle,
+          borderDownColor: downCandle,
+          wickUpColor: upCandle,
+          wickDownColor: downCandle,
+        });
+      } else {
+        mainSeriesRef.current.applyOptions({
+          lineColor: isDark ? '#38bdf8' : '#0284c7',
+          topColor: isDark ? 'rgba(56, 189, 248, 0.28)' : 'rgba(2, 132, 199, 0.22)',
+          bottomColor: isDark ? 'rgba(56, 189, 248, 0.02)' : 'rgba(2, 132, 199, 0.01)',
+        });
+      }
+    }
+    setRenderTick((t) => t + 1);
+  }, [isDark, chartMode]);
 
   // Smoothly stream live tick updates without tearing down chart
   useEffect(() => {
@@ -864,14 +926,14 @@ export const TradingViewChart: React.FC<{
     if (!pt) return;
 
     const toolColorMap: Record<Exclude<DrawingToolType, 'crosshair'>, string> = {
-      trendline: '#ffb02e',
-      ray: '#46a6ff',
+      trendline: '#0ea5e9',
+      ray: '#6366f1',
       hline: '#38bdf8',
       vline: '#94a3b8',
       fib: '#c084fc',
-      measure: '#ffb02e',
-      long: '#22e0a1',
-      short: '#ff4d6d',
+      measure: '#14b8a6',
+      long: '#10b981',
+      short: '#f43f5e',
     };
 
     if (activeTool === 'hline' || activeTool === 'vline') {
@@ -964,12 +1026,15 @@ export const TradingViewChart: React.FC<{
     if (!c1) return null;
     const c2 = d.p2 ? pointToXY(d.p2) : null;
     const opacity = isPreview ? 0.78 : 0.95;
+    const labelBg = isDark ? '#0b1120' : '#ffffff';
+    const fibTextColor = isDark ? '#cbd5e1' : '#334155';
+    const entryStroke = isDark ? '#e2e8f0' : '#334155';
 
     if (d.type === 'hline') {
       return (
         <g key={d.id} opacity={opacity}>
           <line x1={0} y1={c1.y} x2={canvasWidth} y2={c1.y} stroke={d.color} strokeWidth={1.5} strokeDasharray="5 3" />
-          <rect x={8} y={c1.y - 10} width={78} height={18} rx={3} fill="#0b1120" stroke={d.color} strokeWidth={1} />
+          <rect x={8} y={c1.y - 10} width={78} height={18} rx={3} fill={labelBg} stroke={d.color} strokeWidth={1} />
           <text x={13} y={c1.y + 3} fill={d.color} fontSize={10} fontFamily="JetBrains Mono, monospace">
             {formatAxisPrice(d.p1.price)}
           </text>
@@ -1025,7 +1090,7 @@ export const TradingViewChart: React.FC<{
       const maxY = Math.max(c1.y, c2.y);
       const pDiff = (d.p2?.price ?? d.p1.price) - d.p1.price;
       const pct = d.p1.price !== 0 ? (pDiff / d.p1.price) * 100 : 0;
-      const col = pDiff >= 0 ? '#22e0a1' : '#ff4d6d';
+      const col = pDiff >= 0 ? (isDark ? '#22e0a1' : '#059669') : (isDark ? '#ff4d6d' : '#e11d48');
       const label = `${pDiff >= 0 ? '+' : ''}${formatAxisPrice(pDiff)} (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)`;
       return (
         <g key={d.id} opacity={opacity}>
@@ -1034,11 +1099,11 @@ export const TradingViewChart: React.FC<{
             y={minY}
             width={Math.max(4, maxX - minX)}
             height={Math.max(4, maxY - minY)}
-            fill={pDiff >= 0 ? 'rgba(34,224,161,0.12)' : 'rgba(255,77,109,0.12)'}
+            fill={pDiff >= 0 ? 'rgba(16,185,129,0.12)' : 'rgba(244,63,94,0.12)'}
             stroke={col}
             strokeWidth={1.25}
           />
-          <rect x={minX} y={Math.max(4, minY - 22)} width={Math.max(130, label.length * 7)} height={18} rx={3} fill="#090e1a" stroke={col} strokeWidth={1} />
+          <rect x={minX} y={Math.max(4, minY - 22)} width={Math.max(130, label.length * 7)} height={18} rx={3} fill={labelBg} stroke={col} strokeWidth={1} />
           <text x={minX + 6} y={Math.max(16, minY - 9)} fill={col} fontSize={10} fontFamily="JetBrains Mono, monospace">
             {label}
           </text>
@@ -1065,11 +1130,11 @@ export const TradingViewChart: React.FC<{
                   y1={yCoord}
                   x2={minX + width}
                   y2={yCoord}
-                  stroke={lvl === 0.618 || lvl === 0.5 ? '#ffb02e' : '#c084fc'}
+                  stroke={lvl === 0.618 || lvl === 0.5 ? '#0ea5e9' : '#8b5cf6'}
                   strokeWidth={lvl === 0.618 || lvl === 0.5 ? 1.4 : 1}
                   strokeDasharray={lvl === 0 || lvl === 1 ? undefined : '4 3'}
                 />
-                <text x={minX + 4} y={yCoord - 3} fill="#cbd5e1" fontSize={9.5} fontFamily="JetBrains Mono, monospace">
+                <text x={minX + 4} y={yCoord - 3} fill={fibTextColor} fontSize={9.5} fontFamily="JetBrains Mono, monospace">
                   {lvl.toFixed(3)} ({formatAxisPrice(lvlPrice)})
                 </text>
               </g>
@@ -1093,10 +1158,10 @@ export const TradingViewChart: React.FC<{
 
       return (
         <g key={d.id} opacity={opacity}>
-          <rect x={minX} y={tpTop} width={width} height={Math.max(8, profitHeight)} fill="rgba(34,224,161,0.16)" stroke="#22e0a1" strokeWidth={1} />
-          <rect x={minX} y={slTop} width={width} height={stopHeight} fill="rgba(255,77,109,0.15)" stroke="#ff4d6d" strokeWidth={1} />
-          <line x1={minX} y1={entryY} x2={minX + width} y2={entryY} stroke="#e2e8f0" strokeWidth={1.25} />
-          <text x={minX + 6} y={tpTop + 13} fill="#22e0a1" fontSize={10} fontFamily="JetBrains Mono, monospace">
+          <rect x={minX} y={tpTop} width={width} height={Math.max(8, profitHeight)} fill="rgba(16,185,129,0.16)" stroke="#10b981" strokeWidth={1} />
+          <rect x={minX} y={slTop} width={width} height={stopHeight} fill="rgba(244,63,94,0.15)" stroke="#f43f5e" strokeWidth={1} />
+          <line x1={minX} y1={entryY} x2={minX + width} y2={entryY} stroke={entryStroke} strokeWidth={1.25} />
+          <text x={minX + 6} y={tpTop + 13} fill={isDark ? '#22e0a1' : '#059669'} fontSize={10} fontFamily="JetBrains Mono, monospace">
             {isLong ? 'LONG' : 'SHORT'} TP {targetPct >= 0 ? '+' : ''}{targetPct.toFixed(2)}%
           </text>
         </g>
@@ -1165,7 +1230,7 @@ export const TradingViewChart: React.FC<{
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           {/* Resolution Selector */}
-          <div className="flex items-center gap-0.5 rounded-lg border border-slate-800 bg-[#070b14] p-0.5">
+          <div className="flex items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-100/80 p-0.5 dark:border-slate-800 dark:bg-[#070b14]">
             {['1m', '5m', '15m', '1H', '4H', '1D'].map((res) => (
               <button
                 key={res}
@@ -1173,8 +1238,8 @@ export const TradingViewChart: React.FC<{
                 onClick={() => onResolutionChange(res)}
                 className={`rounded-md px-2.5 py-1 text-xs font-mono transition-colors whitespace-nowrap shrink-0 ${
                   resolution === res
-                    ? 'bg-[#ffb02e] font-semibold text-[#1f0e03]'
-                    : 'text-slate-400 hover:text-[#e8edfb]'
+                    ? 'sunrise-gradient-btn font-semibold shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-[#e8edfb]'
                 }`}
               >
                 {res}
@@ -1189,18 +1254,18 @@ export const TradingViewChart: React.FC<{
               onClick={() => setMenuOpen((o) => !o)}
               className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
                 menuOpen
-                  ? 'border-[#ffb02e]/60 bg-[#ffb02e]/12 text-[#ffb02e]'
-                  : 'border-slate-800 bg-[#070b14] text-slate-200 hover:border-slate-700'
+                  ? 'border-sky-500/60 bg-sky-500/12 text-sky-700 dark:border-sky-400/60 dark:bg-sky-400/15 dark:text-sky-300'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-800 dark:bg-[#070b14] dark:text-slate-200 dark:hover:border-slate-700'
               }`}
             >
-              <SlidersHorizontal className="h-3.5 w-3.5 text-[#ffb02e]" />
+              <SlidersHorizontal className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
               Indicators ({enabledCount})
               <ChevronDown className="h-3.5 w-3.5" />
             </button>
 
             {menuOpen && (
-              <div className="absolute left-0 top-full z-40 mt-1.5 w-72 rounded-xl border border-slate-700/80 bg-[#0b1120] p-2.5 shadow-2xl">
-                <div className="mb-1.5 px-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              <div className="absolute left-0 top-full z-40 mt-1.5 w-72 rounded-xl border border-slate-200 bg-white p-2.5 shadow-2xl dark:border-slate-700/80 dark:bg-[#0b1120]">
+                <div className="mb-1.5 px-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Overlays &amp; Oscillators
                 </div>
                 <div className="space-y-1 text-xs">
@@ -1209,7 +1274,7 @@ export const TradingViewChart: React.FC<{
                       {
                         key: 'ema5',
                         label: `5 EMA Ribbon (${settings.ema5.slots.map((s) => s.period).join(', ')})`,
-                        color: '#ffb02e',
+                        color: settings.ema5.slots[0]?.color || '#0ea5e9',
                         enabled: settings.ema5.enabled,
                         visible: settings.ema5.visible,
                         editable: true,
@@ -1275,7 +1340,9 @@ export const TradingViewChart: React.FC<{
                     <div
                       key={item.key}
                       className={`flex items-center justify-between rounded-lg px-2 py-1.5 ${
-                        item.enabled ? 'bg-slate-800/75 text-[#e8edfb]' : 'text-slate-400 hover:bg-slate-800/35'
+                        item.enabled
+                          ? 'bg-sky-50 text-slate-900 dark:bg-slate-800/75 dark:text-[#e8edfb]'
+                          : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800/35'
                       }`}
                     >
                       <button
@@ -1308,7 +1375,7 @@ export const TradingViewChart: React.FC<{
                             }
                             aria-label={`${item.visible ? 'Hide' : 'Show'} ${item.label}`}
                             title={item.visible ? 'Hide' : 'Show'}
-                            className="rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-[#e8edfb]"
+                            className="rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-[#e8edfb]"
                           >
                             {item.visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                           </button>
@@ -1322,7 +1389,7 @@ export const TradingViewChart: React.FC<{
                             }}
                             aria-label={`Edit ${item.label}`}
                             title="Edit parameters"
-                            className="rounded p-1 text-slate-400 hover:bg-slate-700 hover:text-[#ffb02e]"
+                            className="rounded p-1 text-slate-500 hover:bg-slate-200 hover:text-sky-600 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-sky-300"
                           >
                             <Settings2 className="h-3.5 w-3.5" />
                           </button>
@@ -1336,7 +1403,7 @@ export const TradingViewChart: React.FC<{
           </div>
 
           {activeTool !== 'crosshair' && (
-            <span className="font-mono text-[11px] text-[#ffb02e]">
+            <span className="font-mono text-[11px] text-sky-600 dark:text-sky-400">
               {draftStart
                 ? `Click 2nd point to place ${activeTool.toUpperCase()} (Esc to cancel)`
                 : `Click chart to place ${activeTool.toUpperCase()}`}
@@ -1346,12 +1413,14 @@ export const TradingViewChart: React.FC<{
 
         {/* Mode + Scale + Fit */}
         <div className="flex items-center gap-1.5">
-          <div className="flex items-center gap-0.5 rounded-lg border border-slate-800 bg-[#070b14] p-0.5">
+          <div className="flex items-center gap-0.5 rounded-lg border border-slate-200 bg-slate-100/80 p-0.5 dark:border-slate-800 dark:bg-[#070b14]">
             <button
               type="button"
               onClick={() => setChartMode('candle')}
               className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-mono whitespace-nowrap shrink-0 ${
-                chartMode === 'candle' ? 'bg-slate-800 text-[#ffb02e]' : 'text-slate-400 hover:text-[#e8edfb]'
+                chartMode === 'candle'
+                  ? 'bg-white text-sky-600 shadow-xs dark:bg-slate-800 dark:text-sky-300'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-[#e8edfb]'
               }`}
             >
               <BarChart2 className="h-3.5 w-3.5" />
@@ -1361,7 +1430,9 @@ export const TradingViewChart: React.FC<{
               type="button"
               onClick={() => setChartMode('area')}
               className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-mono whitespace-nowrap shrink-0 ${
-                chartMode === 'area' ? 'bg-slate-800 text-[#ffb02e]' : 'text-slate-400 hover:text-[#e8edfb]'
+                chartMode === 'area'
+                  ? 'bg-white text-sky-600 shadow-xs dark:bg-slate-800 dark:text-sky-300'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-[#e8edfb]'
               }`}
             >
               <TrendingUp className="h-3.5 w-3.5" />
@@ -1374,8 +1445,8 @@ export const TradingViewChart: React.FC<{
             onClick={() => setScaleMode((m) => (m === 'normal' ? 'log' : 'normal'))}
             className={`rounded-lg border px-2.5 py-1 text-xs font-mono whitespace-nowrap shrink-0 ${
               scaleMode === 'log'
-                ? 'border-[#ffb02e]/60 bg-[#ffb02e]/15 text-[#ffb02e]'
-                : 'border-slate-800 bg-[#070b14] text-slate-400 hover:text-[#e8edfb]'
+                ? 'border-sky-500/60 bg-sky-500/12 text-sky-700 dark:border-sky-400/60 dark:bg-sky-400/15 dark:text-sky-300'
+                : 'border-slate-200 bg-white text-slate-600 hover:text-slate-900 dark:border-slate-800 dark:bg-[#070b14] dark:text-slate-400 dark:hover:text-[#e8edfb]'
             }`}
             title="Toggle Logarithmic Scale"
           >
@@ -1385,7 +1456,7 @@ export const TradingViewChart: React.FC<{
           <button
             type="button"
             onClick={() => chartRef.current?.timeScale().fitContent()}
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-800 bg-[#070b14] px-2.5 py-1 text-xs font-mono text-slate-400 hover:text-[#e8edfb] whitespace-nowrap shrink-0"
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-mono text-slate-600 hover:text-slate-900 dark:border-slate-800 dark:bg-[#070b14] dark:text-slate-400 dark:hover:text-[#e8edfb] whitespace-nowrap shrink-0"
             title="Fit all bars"
           >
             <Maximize2 className="h-3.5 w-3.5" />
@@ -1394,12 +1465,12 @@ export const TradingViewChart: React.FC<{
         </div>
       </div>
 
-      {/* Main Chart Body: DexScreener-Style Left Drawing Toolbar + Full-Height Canvas */}
-      <div className="relative flex flex-1 overflow-hidden rounded-xl border border-slate-800/80 bg-[#070b14] min-h-[480px]">
+      {/* Main Chart Body: Left Drawing Toolbar + Full-Height Canvas */}
+      <div className="relative flex flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800/80 dark:bg-[#070b14] min-h-[480px]">
         {/* Left Vertical Drawing Tools Sidebar */}
         <aside
           aria-label="Chart drawing tools"
-          className="flex w-10 shrink-0 flex-col items-center justify-between border-r border-slate-800/80 bg-[#060911] py-2 select-none"
+          className="flex w-10 shrink-0 flex-col items-center justify-between border-r border-slate-200 bg-slate-50/90 py-2 select-none dark:border-slate-800/80 dark:bg-[#060911]"
         >
           <div className="flex flex-col items-center gap-1">
             {drawingTools.map((tool) => {
@@ -1417,8 +1488,8 @@ export const TradingViewChart: React.FC<{
                   title={tool.label}
                   className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
                     active
-                      ? 'bg-[#ffb02e]/20 text-[#ffb02e] ring-1 ring-[#ffb02e]/50'
-                      : 'text-slate-400 hover:bg-slate-800/70 hover:text-[#e8edfb]'
+                      ? 'bg-sky-500/15 text-sky-600 ring-1 ring-sky-500/50 dark:bg-sky-400/20 dark:text-sky-300 dark:ring-sky-400/50'
+                      : 'text-slate-500 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/70 dark:hover:text-[#e8edfb]'
                   }`}
                 >
                   {tool.icon}
@@ -1427,7 +1498,7 @@ export const TradingViewChart: React.FC<{
             })}
           </div>
 
-          <div className="flex flex-col items-center gap-1 border-t border-slate-800/80 pt-2">
+          <div className="flex flex-col items-center gap-1 border-t border-slate-200 pt-2 dark:border-slate-800/80">
             <button
               type="button"
               onClick={() => setMagnetEnabled((m) => !m)}
@@ -1435,8 +1506,8 @@ export const TradingViewChart: React.FC<{
               title="Magnet Snap to Candle OHLC"
               className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
                 magnetEnabled
-                  ? 'bg-[#46a6ff]/20 text-[#46a6ff]'
-                  : 'text-slate-400 hover:bg-slate-800/70 hover:text-[#e8edfb]'
+                  ? 'bg-blue-500/15 text-blue-600 dark:bg-[#46a6ff]/20 dark:text-[#46a6ff]'
+                  : 'text-slate-500 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/70 dark:hover:text-[#e8edfb]'
               }`}
             >
               <Magnet className="h-3.5 w-3.5" />
@@ -1449,8 +1520,8 @@ export const TradingViewChart: React.FC<{
               title={drawingsHidden ? 'Show all drawings' : 'Hide all drawings'}
               className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
                 drawingsHidden
-                  ? 'bg-[#ffb02e]/20 text-[#ffb02e]'
-                  : 'text-slate-400 hover:bg-slate-800/70 hover:text-[#e8edfb]'
+                  ? 'bg-sky-500/15 text-sky-600 dark:bg-sky-400/20 dark:text-sky-300'
+                  : 'text-slate-500 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/70 dark:hover:text-[#e8edfb]'
               }`}
             >
               {drawingsHidden ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
@@ -1462,7 +1533,7 @@ export const TradingViewChart: React.FC<{
               onClick={() => setDrawings((prev) => prev.slice(0, -1))}
               aria-label="Undo last drawing"
               title="Undo last drawing"
-              className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-slate-800/70 hover:text-[#e8edfb] disabled:opacity-30 disabled:pointer-events-none"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800/70 dark:hover:text-[#e8edfb] disabled:opacity-30 disabled:pointer-events-none"
             >
               <Undo2 className="h-3.5 w-3.5" />
             </button>
@@ -1477,7 +1548,7 @@ export const TradingViewChart: React.FC<{
               }}
               aria-label="Clear all drawings"
               title="Clear all drawings"
-              className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 hover:bg-[#ff4d6d]/15 hover:text-[#ff4d6d] disabled:opacity-30 disabled:pointer-events-none"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-rose-500/15 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-[#ff4d6d]/15 dark:hover:text-[#ff4d6d] disabled:opacity-30 disabled:pointer-events-none"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
@@ -1487,30 +1558,30 @@ export const TradingViewChart: React.FC<{
         {/* Right Side: Live OHLCV + Indicator Legend + Full-Height Canvas + SVG Overlay */}
         <div className="relative flex flex-1 flex-col min-w-0">
           {/* Top Live OHLCV Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-slate-800/70 bg-[#070b14] px-3 py-1.5 text-[11px] font-mono tabular-nums text-slate-400">
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-slate-200 bg-slate-50/75 px-3 py-1.5 text-[11px] font-mono tabular-nums text-slate-600 dark:border-slate-800/70 dark:bg-[#070b14] dark:text-slate-400">
             {activeBar ? (
               <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                <span className="font-semibold text-[#e8edfb]">
+                <span className="font-semibold text-slate-900 dark:text-[#e8edfb]">
                   {symbol || `Market #${marketId}`} · {resolution}
                 </span>
                 <span className="text-slate-500">{formatDateTime(activeBar.time * 1000)}</span>
                 <span>
-                  O <strong className="text-[#e8edfb]">{formatPrice(activeBar.open)}</strong>
+                  O <strong className="text-slate-900 dark:text-[#e8edfb]">{formatPrice(activeBar.open)}</strong>
                 </span>
                 <span>
-                  H <strong className="text-[#22e0a1]">{formatPrice(activeBar.high)}</strong>
+                  H <strong className="text-emerald-600 dark:text-[#22e0a1]">{formatPrice(activeBar.high)}</strong>
                 </span>
                 <span>
-                  L <strong className="text-[#ff4d6d]">{formatPrice(activeBar.low)}</strong>
+                  L <strong className="text-rose-600 dark:text-[#ff4d6d]">{formatPrice(activeBar.low)}</strong>
                 </span>
                 <span>
                   C{' '}
-                  <strong className={activeBar.close >= activeBar.open ? 'text-[#22e0a1]' : 'text-[#ff4d6d]'}>
+                  <strong className={activeBar.close >= activeBar.open ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'}>
                     {formatPrice(activeBar.close)}
                   </strong>
                 </span>
                 <span>
-                  Vol <strong className="text-[#ffb02e]">{activeBar.volume.toFixed(2)}</strong>
+                  Vol <strong className="text-sky-600 dark:text-sky-400">{activeBar.volume.toFixed(2)}</strong>
                 </span>
               </div>
             ) : (
@@ -1518,7 +1589,7 @@ export const TradingViewChart: React.FC<{
             )}
 
             {liveMarkPrice && liveMarkPrice > 0 ? (
-              <span className="inline-flex items-center gap-1 text-[#22e0a1]">
+              <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-[#22e0a1]">
                 <Activity className="h-3 w-3" />
                 Live {formatPrice(liveMarkPrice)}
               </span>
@@ -1526,16 +1597,16 @@ export const TradingViewChart: React.FC<{
           </div>
 
           {/* Interactive Indicator Legend Bar (Hide / Edit / Remove directly on chart) */}
-          <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-800/50 bg-[#070b14]/90 px-3 py-1 text-[10.5px] font-mono tabular-nums">
+          <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-200/80 bg-white/95 px-3 py-1 text-[10.5px] font-mono tabular-nums dark:border-slate-800/50 dark:bg-[#070b14]/90">
             {settings.ema5.enabled && (
               <div
                 className={`inline-flex items-center gap-1.5 rounded border px-1.5 py-0.5 ${
                   settings.ema5.visible
-                    ? 'border-slate-800 bg-[#0b101d] text-slate-200'
-                    : 'border-slate-800/60 bg-[#070b14] text-slate-500 opacity-65'
+                    ? 'border-slate-200 bg-slate-50 text-slate-800 dark:border-slate-800 dark:bg-[#0b101d] dark:text-slate-200'
+                    : 'border-slate-200/60 bg-slate-100 text-slate-500 opacity-65 dark:border-slate-800/60 dark:bg-[#070b14]'
                 }`}
               >
-                <span className="font-semibold text-slate-300">5 EMA</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-300">5 EMA</span>
                 {settings.ema5.visible && (
                   <span className="hidden sm:inline-flex items-center gap-1.5">
                     {activeReadouts.emaSlots.map((slot) =>
@@ -1554,7 +1625,7 @@ export const TradingViewChart: React.FC<{
                   }
                   aria-label={settings.ema5.visible ? 'Hide 5 EMA' : 'Show 5 EMA'}
                   title={settings.ema5.visible ? 'Hide 5 EMA' : 'Show 5 EMA'}
-                  className="text-slate-400 hover:text-[#e8edfb]"
+                  className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-[#e8edfb]"
                 >
                   {settings.ema5.visible ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
                 </button>
@@ -1563,7 +1634,7 @@ export const TradingViewChart: React.FC<{
                   onClick={() => setEditingKey('ema5')}
                   aria-label="Edit 5 EMA"
                   title="Edit 5 EMA"
-                  className="text-slate-400 hover:text-[#ffb02e]"
+                  className="text-slate-500 hover:text-sky-600 dark:text-slate-400 dark:hover:text-sky-300"
                 >
                   <Settings2 className="h-3 w-3" />
                 </button>
@@ -1572,7 +1643,7 @@ export const TradingViewChart: React.FC<{
                   onClick={() => setSettings((p) => ({ ...p, ema5: { ...p.ema5, enabled: false } }))}
                   aria-label="Remove 5 EMA"
                   title="Remove 5 EMA"
-                  className="text-slate-500 hover:text-[#ff4d6d]"
+                  className="text-slate-400 hover:text-rose-600 dark:text-slate-500 dark:hover:text-[#ff4d6d]"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -1583,11 +1654,11 @@ export const TradingViewChart: React.FC<{
               <div
                 className={`inline-flex items-center gap-1.5 rounded border px-1.5 py-0.5 ${
                   settings.supertrend.visible
-                    ? 'border-slate-800 bg-[#0b101d] text-slate-200'
-                    : 'border-slate-800/60 bg-[#070b14] text-slate-500 opacity-65'
+                    ? 'border-slate-200 bg-slate-50 text-slate-800 dark:border-slate-800 dark:bg-[#0b101d] dark:text-slate-200'
+                    : 'border-slate-200/60 bg-slate-100 text-slate-500 opacity-65 dark:border-slate-800/60 dark:bg-[#070b14]'
                 }`}
               >
-                <span className="font-semibold text-slate-300">
+                <span className="font-semibold text-slate-700 dark:text-slate-300">
                   Supertrend({settings.supertrend.period},{settings.supertrend.multiplier})
                 </span>
                 {settings.supertrend.visible && activeReadouts.supertrend && (
@@ -1613,7 +1684,7 @@ export const TradingViewChart: React.FC<{
                   }
                   aria-label={settings.supertrend.visible ? 'Hide Supertrend' : 'Show Supertrend'}
                   title={settings.supertrend.visible ? 'Hide Supertrend' : 'Show Supertrend'}
-                  className="text-slate-400 hover:text-[#e8edfb]"
+                  className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-[#e8edfb]"
                 >
                   {settings.supertrend.visible ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
                 </button>
@@ -1622,7 +1693,7 @@ export const TradingViewChart: React.FC<{
                   onClick={() => setEditingKey('supertrend')}
                   aria-label="Edit Supertrend"
                   title="Edit Supertrend"
-                  className="text-slate-400 hover:text-[#ffb02e]"
+                  className="text-slate-500 hover:text-sky-600 dark:text-slate-400 dark:hover:text-sky-300"
                 >
                   <Settings2 className="h-3 w-3" />
                 </button>
@@ -1633,7 +1704,7 @@ export const TradingViewChart: React.FC<{
                   }
                   aria-label="Remove Supertrend"
                   title="Remove Supertrend"
-                  className="text-slate-500 hover:text-[#ff4d6d]"
+                  className="text-slate-400 hover:text-rose-600 dark:text-slate-500 dark:hover:text-[#ff4d6d]"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -1644,11 +1715,11 @@ export const TradingViewChart: React.FC<{
               <div
                 className={`inline-flex items-center gap-1.5 rounded border px-1.5 py-0.5 ${
                   settings.rsi.visible
-                    ? 'border-slate-800 bg-[#0b101d] text-slate-200'
-                    : 'border-slate-800/60 bg-[#070b14] text-slate-500 opacity-65'
+                    ? 'border-slate-200 bg-slate-50 text-slate-800 dark:border-slate-800 dark:bg-[#0b101d] dark:text-slate-200'
+                    : 'border-slate-200/60 bg-slate-100 text-slate-500 opacity-65 dark:border-slate-800/60 dark:bg-[#070b14]'
                 }`}
               >
-                <span className="font-semibold text-slate-300">RSI({settings.rsi.period})</span>
+                <span className="font-semibold text-slate-700 dark:text-slate-300">RSI({settings.rsi.period})</span>
                 {settings.rsi.visible && activeReadouts.rsi !== null && (
                   <span style={{ color: settings.rsi.color }}>{activeReadouts.rsi.toFixed(1)}</span>
                 )}
@@ -1659,7 +1730,7 @@ export const TradingViewChart: React.FC<{
                   }
                   aria-label={settings.rsi.visible ? 'Hide RSI' : 'Show RSI'}
                   title={settings.rsi.visible ? 'Hide RSI' : 'Show RSI'}
-                  className="text-slate-400 hover:text-[#e8edfb]"
+                  className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-[#e8edfb]"
                 >
                   {settings.rsi.visible ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
                 </button>
@@ -1668,7 +1739,7 @@ export const TradingViewChart: React.FC<{
                   onClick={() => setEditingKey('rsi')}
                   aria-label="Edit RSI"
                   title="Edit RSI"
-                  className="text-slate-400 hover:text-[#ffb02e]"
+                  className="text-slate-500 hover:text-sky-600 dark:text-slate-400 dark:hover:text-sky-300"
                 >
                   <Settings2 className="h-3 w-3" />
                 </button>
@@ -1677,7 +1748,7 @@ export const TradingViewChart: React.FC<{
                   onClick={() => setSettings((p) => ({ ...p, rsi: { ...p.rsi, enabled: false } }))}
                   aria-label="Remove RSI"
                   title="Remove RSI"
-                  className="text-slate-500 hover:text-[#ff4d6d]"
+                  className="text-slate-400 hover:text-rose-600 dark:text-slate-500 dark:hover:text-[#ff4d6d]"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -1685,7 +1756,7 @@ export const TradingViewChart: React.FC<{
             )}
 
             {settings.bb.enabled && (
-              <div className="inline-flex items-center gap-1.5 rounded border border-slate-800 bg-[#0b101d] px-1.5 py-0.5 text-slate-300">
+              <div className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-slate-700 dark:border-slate-800 dark:bg-[#0b101d] dark:text-slate-300">
                 <span>
                   BB({settings.bb.period},{settings.bb.stdDev})
                 </span>
@@ -1693,7 +1764,7 @@ export const TradingViewChart: React.FC<{
                   type="button"
                   onClick={() => setSettings((p) => ({ ...p, bb: { ...p.bb, visible: !p.bb.visible } }))}
                   aria-label={settings.bb.visible ? 'Hide Bollinger Bands' : 'Show Bollinger Bands'}
-                  className="text-slate-400 hover:text-[#e8edfb]"
+                  className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-[#e8edfb]"
                 >
                   {settings.bb.visible ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
                 </button>
@@ -1701,7 +1772,7 @@ export const TradingViewChart: React.FC<{
                   type="button"
                   onClick={() => setEditingKey('bb')}
                   aria-label="Edit Bollinger Bands"
-                  className="text-slate-400 hover:text-[#ffb02e]"
+                  className="text-slate-500 hover:text-sky-600 dark:text-slate-400 dark:hover:text-sky-300"
                 >
                   <Settings2 className="h-3 w-3" />
                 </button>
@@ -1709,7 +1780,7 @@ export const TradingViewChart: React.FC<{
                   type="button"
                   onClick={() => setSettings((p) => ({ ...p, bb: { ...p.bb, enabled: false } }))}
                   aria-label="Remove Bollinger Bands"
-                  className="text-slate-500 hover:text-[#ff4d6d]"
+                  className="text-slate-400 hover:text-rose-600 dark:text-slate-500 dark:hover:text-[#ff4d6d]"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -1717,7 +1788,7 @@ export const TradingViewChart: React.FC<{
             )}
 
             {settings.macd.enabled && (
-              <div className="inline-flex items-center gap-1.5 rounded border border-slate-800 bg-[#0b101d] px-1.5 py-0.5 text-slate-300">
+              <div className="inline-flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-slate-700 dark:border-slate-800 dark:bg-[#0b101d] dark:text-slate-300">
                 <span>
                   MACD({settings.macd.fast},{settings.macd.slow},{settings.macd.signal})
                 </span>
@@ -1727,7 +1798,7 @@ export const TradingViewChart: React.FC<{
                     setSettings((p) => ({ ...p, macd: { ...p.macd, visible: !p.macd.visible } }))
                   }
                   aria-label={settings.macd.visible ? 'Hide MACD' : 'Show MACD'}
-                  className="text-slate-400 hover:text-[#e8edfb]"
+                  className="text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-[#e8edfb]"
                 >
                   {settings.macd.visible ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
                 </button>
@@ -1735,7 +1806,7 @@ export const TradingViewChart: React.FC<{
                   type="button"
                   onClick={() => setEditingKey('macd')}
                   aria-label="Edit MACD"
-                  className="text-slate-400 hover:text-[#ffb02e]"
+                  className="text-slate-500 hover:text-sky-600 dark:text-slate-400 dark:hover:text-sky-300"
                 >
                   <Settings2 className="h-3 w-3" />
                 </button>
@@ -1743,7 +1814,7 @@ export const TradingViewChart: React.FC<{
                   type="button"
                   onClick={() => setSettings((p) => ({ ...p, macd: { ...p.macd, enabled: false } }))}
                   aria-label="Remove MACD"
-                  className="text-slate-500 hover:text-[#ff4d6d]"
+                  className="text-slate-400 hover:text-rose-600 dark:text-slate-500 dark:hover:text-[#ff4d6d]"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -1774,14 +1845,14 @@ export const TradingViewChart: React.FC<{
                     type: activeTool,
                     p1: draftStart,
                     p2: draftCursor,
-                    color: '#ffb02e',
+                    color: '#0ea5e9',
                   },
                   true
                 )}
             </svg>
 
             {bars.length === 0 && (
-              <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-400 pointer-events-none">
+              <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-500 dark:text-slate-400 pointer-events-none">
                 No candle data available for this interval.
               </div>
             )}
@@ -1790,10 +1861,10 @@ export const TradingViewChart: React.FC<{
 
         {/* Indicator Settings Editor Modal */}
         {editingKey && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/55 p-4">
-            <div className="w-full max-w-md rounded-xl border border-slate-700 bg-[#0b1120] p-4 shadow-2xl">
-              <div className="mb-3 flex items-center justify-between border-b border-slate-800 pb-2.5">
-                <h3 className="font-display text-sm font-bold text-[#e8edfb]">
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-900/35 dark:bg-black/55 p-4 backdrop-blur-[1px]">
+            <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-4 shadow-2xl dark:border-slate-700 dark:bg-[#0b1120]">
+              <div className="mb-3 flex items-center justify-between border-b border-slate-200 pb-2.5 dark:border-slate-800">
+                <h3 className="font-display text-sm font-bold text-slate-900 dark:text-[#e8edfb]">
                   {editingKey === 'ema5' && 'Edit 5 EMA Ribbon'}
                   {editingKey === 'supertrend' && 'Edit Supertrend Settings'}
                   {editingKey === 'rsi' && 'Edit RSI Settings'}
@@ -1805,7 +1876,7 @@ export const TradingViewChart: React.FC<{
                   type="button"
                   onClick={() => setEditingKey(null)}
                   aria-label="Close indicator settings"
-                  className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-[#e8edfb]"
+                  className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-[#e8edfb]"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -1816,7 +1887,7 @@ export const TradingViewChart: React.FC<{
                   {settings.ema5.slots.map((slot, idx) => (
                     <div
                       key={slot.id}
-                      className="flex items-center justify-between gap-2 rounded-lg border border-slate-800 bg-[#070b14] px-2.5 py-2"
+                      className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 dark:border-slate-800 dark:bg-[#070b14]"
                     >
                       <button
                         type="button"
@@ -1832,12 +1903,12 @@ export const TradingViewChart: React.FC<{
                           }))
                         }
                         aria-label={`Toggle EMA slot ${idx + 1}`}
-                        className="text-slate-300 hover:text-[#ffb02e]"
+                        className="text-slate-600 hover:text-sky-600 dark:text-slate-300 dark:hover:text-sky-300"
                       >
-                        {slot.visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5 text-slate-500" />}
+                        {slot.visible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />}
                       </button>
 
-                      <span className="font-mono text-slate-400 w-12">EMA {idx + 1}</span>
+                      <span className="font-mono text-slate-500 dark:text-slate-400 w-12">EMA {idx + 1}</span>
 
                       <input
                         type="number"
@@ -1855,7 +1926,7 @@ export const TradingViewChart: React.FC<{
                             },
                           }));
                         }}
-                        className="w-20 rounded border border-slate-700 bg-[#0b1120] px-2 py-1 font-mono text-xs text-[#e8edfb]"
+                        className="w-20 rounded border border-slate-300 bg-white px-2 py-1 font-mono text-xs text-slate-900 dark:border-slate-700 dark:bg-[#0b1120] dark:text-[#e8edfb]"
                       />
 
                       <div className="flex items-center gap-1">
@@ -1875,7 +1946,7 @@ export const TradingViewChart: React.FC<{
                               }))
                             }
                             aria-label={`Set EMA ${idx + 1} color ${col}`}
-                            className={`h-4 w-4 rounded-sm ${slot.color === col ? 'ring-2 ring-white' : ''}`}
+                            className={`h-4 w-4 rounded-sm ${slot.color === col ? 'ring-2 ring-slate-900 dark:ring-white' : ''}`}
                             style={{ backgroundColor: col }}
                           />
                         ))}
@@ -1889,7 +1960,7 @@ export const TradingViewChart: React.FC<{
                 <div className="space-y-3 text-xs">
                   <div className="grid grid-cols-2 gap-3">
                     <label className="block space-y-1">
-                      <span className="text-slate-400">ATR Length</span>
+                      <span className="text-slate-500 dark:text-slate-400">ATR Length</span>
                       <input
                         type="number"
                         min={1}
@@ -1904,11 +1975,11 @@ export const TradingViewChart: React.FC<{
                             },
                           }))
                         }
-                        className="w-full rounded border border-slate-700 bg-[#070b14] px-2.5 py-1.5 font-mono text-[#e8edfb]"
+                        className="w-full rounded border border-slate-300 bg-slate-50 px-2.5 py-1.5 font-mono text-slate-900 dark:border-slate-700 dark:bg-[#070b14] dark:text-[#e8edfb]"
                       />
                     </label>
                     <label className="block space-y-1">
-                      <span className="text-slate-400">Factor / Multiplier</span>
+                      <span className="text-slate-500 dark:text-slate-400">Factor / Multiplier</span>
                       <input
                         type="number"
                         step={0.5}
@@ -1924,7 +1995,7 @@ export const TradingViewChart: React.FC<{
                             },
                           }))
                         }
-                        className="w-full rounded border border-slate-700 bg-[#070b14] px-2.5 py-1.5 font-mono text-[#e8edfb]"
+                        className="w-full rounded border border-slate-300 bg-slate-50 px-2.5 py-1.5 font-mono text-slate-900 dark:border-slate-700 dark:bg-[#070b14] dark:text-[#e8edfb]"
                       />
                     </label>
                   </div>
@@ -1935,7 +2006,7 @@ export const TradingViewChart: React.FC<{
                 <div className="space-y-3 text-xs">
                   <div className="grid grid-cols-3 gap-2.5">
                     <label className="block space-y-1">
-                      <span className="text-slate-400">RSI Period</span>
+                      <span className="text-slate-500 dark:text-slate-400">RSI Period</span>
                       <input
                         type="number"
                         min={2}
@@ -1947,11 +2018,11 @@ export const TradingViewChart: React.FC<{
                             rsi: { ...p.rsi, period: Math.max(2, Math.min(100, Number(e.target.value) || 14)) },
                           }))
                         }
-                        className="w-full rounded border border-slate-700 bg-[#070b14] px-2.5 py-1.5 font-mono text-[#e8edfb]"
+                        className="w-full rounded border border-slate-300 bg-slate-50 px-2.5 py-1.5 font-mono text-slate-900 dark:border-slate-700 dark:bg-[#070b14] dark:text-[#e8edfb]"
                       />
                     </label>
                     <label className="block space-y-1">
-                      <span className="text-slate-400">Overbought</span>
+                      <span className="text-slate-500 dark:text-slate-400">Overbought</span>
                       <input
                         type="number"
                         min={55}
@@ -1963,11 +2034,11 @@ export const TradingViewChart: React.FC<{
                             rsi: { ...p.rsi, overbought: Math.max(55, Math.min(95, Number(e.target.value) || 70)) },
                           }))
                         }
-                        className="w-full rounded border border-slate-700 bg-[#070b14] px-2.5 py-1.5 font-mono text-[#e8edfb]"
+                        className="w-full rounded border border-slate-300 bg-slate-50 px-2.5 py-1.5 font-mono text-slate-900 dark:border-slate-700 dark:bg-[#070b14] dark:text-[#e8edfb]"
                       />
                     </label>
                     <label className="block space-y-1">
-                      <span className="text-slate-400">Oversold</span>
+                      <span className="text-slate-500 dark:text-slate-400">Oversold</span>
                       <input
                         type="number"
                         min={5}
@@ -1979,7 +2050,7 @@ export const TradingViewChart: React.FC<{
                             rsi: { ...p.rsi, oversold: Math.max(5, Math.min(45, Number(e.target.value) || 30)) },
                           }))
                         }
-                        className="w-full rounded border border-slate-700 bg-[#070b14] px-2.5 py-1.5 font-mono text-[#e8edfb]"
+                        className="w-full rounded border border-slate-300 bg-slate-50 px-2.5 py-1.5 font-mono text-slate-900 dark:border-slate-700 dark:bg-[#070b14] dark:text-[#e8edfb]"
                       />
                     </label>
                   </div>
@@ -1989,7 +2060,7 @@ export const TradingViewChart: React.FC<{
               {editingKey === 'sma' && (
                 <div className="space-y-3 text-xs">
                   <label className="block space-y-1">
-                    <span className="text-slate-400">SMA Period</span>
+                    <span className="text-slate-500 dark:text-slate-400">SMA Period</span>
                     <input
                       type="number"
                       min={2}
@@ -2001,7 +2072,7 @@ export const TradingViewChart: React.FC<{
                           sma: { ...p.sma, period: Math.max(2, Math.min(300, Number(e.target.value) || 20)) },
                         }))
                       }
-                      className="w-full rounded border border-slate-700 bg-[#070b14] px-2.5 py-1.5 font-mono text-[#e8edfb]"
+                      className="w-full rounded border border-slate-300 bg-slate-50 px-2.5 py-1.5 font-mono text-slate-900 dark:border-slate-700 dark:bg-[#070b14] dark:text-[#e8edfb]"
                     />
                   </label>
                 </div>
@@ -2010,7 +2081,7 @@ export const TradingViewChart: React.FC<{
               {editingKey === 'bb' && (
                 <div className="grid grid-cols-2 gap-3 text-xs">
                   <label className="block space-y-1">
-                    <span className="text-slate-400">BB Period</span>
+                    <span className="text-slate-500 dark:text-slate-400">BB Period</span>
                     <input
                       type="number"
                       min={5}
@@ -2022,11 +2093,11 @@ export const TradingViewChart: React.FC<{
                           bb: { ...p.bb, period: Math.max(5, Math.min(200, Number(e.target.value) || 20)) },
                         }))
                       }
-                      className="w-full rounded border border-slate-700 bg-[#070b14] px-2.5 py-1.5 font-mono text-[#e8edfb]"
+                      className="w-full rounded border border-slate-300 bg-slate-50 px-2.5 py-1.5 font-mono text-slate-900 dark:border-slate-700 dark:bg-[#070b14] dark:text-[#e8edfb]"
                     />
                   </label>
                   <label className="block space-y-1">
-                    <span className="text-slate-400">StdDev Multiplier</span>
+                    <span className="text-slate-500 dark:text-slate-400">StdDev Multiplier</span>
                     <input
                       type="number"
                       step={0.5}
@@ -2039,7 +2110,7 @@ export const TradingViewChart: React.FC<{
                           bb: { ...p.bb, stdDev: Math.max(0.5, Math.min(5, Number(e.target.value) || 2)) },
                         }))
                       }
-                      className="w-full rounded border border-slate-700 bg-[#070b14] px-2.5 py-1.5 font-mono text-[#e8edfb]"
+                      className="w-full rounded border border-slate-300 bg-slate-50 px-2.5 py-1.5 font-mono text-slate-900 dark:border-slate-700 dark:bg-[#070b14] dark:text-[#e8edfb]"
                     />
                   </label>
                 </div>
@@ -2048,7 +2119,7 @@ export const TradingViewChart: React.FC<{
               {editingKey === 'macd' && (
                 <div className="grid grid-cols-3 gap-2.5 text-xs">
                   <label className="block space-y-1">
-                    <span className="text-slate-400">Fast</span>
+                    <span className="text-slate-500 dark:text-slate-400">Fast</span>
                     <input
                       type="number"
                       min={2}
@@ -2060,11 +2131,11 @@ export const TradingViewChart: React.FC<{
                           macd: { ...p.macd, fast: Math.max(2, Math.min(50, Number(e.target.value) || 12)) },
                         }))
                       }
-                      className="w-full rounded border border-slate-700 bg-[#070b14] px-2.5 py-1.5 font-mono text-[#e8edfb]"
+                      className="w-full rounded border border-slate-300 bg-slate-50 px-2.5 py-1.5 font-mono text-slate-900 dark:border-slate-700 dark:bg-[#070b14] dark:text-[#e8edfb]"
                     />
                   </label>
                   <label className="block space-y-1">
-                    <span className="text-slate-400">Slow</span>
+                    <span className="text-slate-500 dark:text-slate-400">Slow</span>
                     <input
                       type="number"
                       min={5}
@@ -2076,11 +2147,11 @@ export const TradingViewChart: React.FC<{
                           macd: { ...p.macd, slow: Math.max(5, Math.min(100, Number(e.target.value) || 26)) },
                         }))
                       }
-                      className="w-full rounded border border-slate-700 bg-[#070b14] px-2.5 py-1.5 font-mono text-[#e8edfb]"
+                      className="w-full rounded border border-slate-300 bg-slate-50 px-2.5 py-1.5 font-mono text-slate-900 dark:border-slate-700 dark:bg-[#070b14] dark:text-[#e8edfb]"
                     />
                   </label>
                   <label className="block space-y-1">
-                    <span className="text-slate-400">Signal</span>
+                    <span className="text-slate-500 dark:text-slate-400">Signal</span>
                     <input
                       type="number"
                       min={2}
@@ -2092,13 +2163,13 @@ export const TradingViewChart: React.FC<{
                           macd: { ...p.macd, signal: Math.max(2, Math.min(50, Number(e.target.value) || 9)) },
                         }))
                       }
-                      className="w-full rounded border border-slate-700 bg-[#070b14] px-2.5 py-1.5 font-mono text-[#e8edfb]"
+                      className="w-full rounded border border-slate-300 bg-slate-50 px-2.5 py-1.5 font-mono text-slate-900 dark:border-slate-700 dark:bg-[#070b14] dark:text-[#e8edfb]"
                     />
                   </label>
                 </div>
               )}
 
-              <div className="mt-4 flex items-center justify-between border-t border-slate-800 pt-3">
+              <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-3 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={() =>
@@ -2107,14 +2178,14 @@ export const TradingViewChart: React.FC<{
                       [editingKey]: DEFAULT_SETTINGS[editingKey],
                     }))
                   }
-                  className="text-xs text-slate-400 hover:text-[#e8edfb]"
+                  className="text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-[#e8edfb]"
                 >
                   Reset Defaults
                 </button>
                 <button
                   type="button"
                   onClick={() => setEditingKey(null)}
-                  className="rounded-lg bg-[#ffb02e] px-3.5 py-1.5 text-xs font-semibold text-[#1f0e03] hover:brightness-110"
+                  className="sunrise-gradient-btn rounded-lg px-3.5 py-1.5 text-xs font-semibold"
                 >
                   Done
                 </button>

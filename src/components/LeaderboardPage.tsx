@@ -180,7 +180,7 @@ export const LeaderboardPage: React.FC<{
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-wider text-amber-600 dark:text-[#ffb02e]">
+          <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-wider text-sky-600 dark:text-sky-400">
             <Trophy className="h-3.5 w-3.5" />
             RISEx Trader Leaderboard
           </div>
@@ -191,7 +191,7 @@ export const LeaderboardPage: React.FC<{
             <span className="font-semibold text-slate-800 dark:text-slate-200">{data?.totalDiscovered?.toLocaleString() || 0}</span> indexed accounts ·{' '}
             <span className="font-semibold text-emerald-600 dark:text-[#22e0a1]">{data?.totalEnriched?.toLocaleString() || 0}</span> live portfolios
             {data?.indexingInProgress && (
-              <span className="ml-2 inline-flex items-center gap-1 text-amber-600 dark:text-[#ffb02e]">
+              <span className="ml-2 inline-flex items-center gap-1 text-sky-600 dark:text-sky-400">
                 <Loader2 className="h-3 w-3 animate-spin" /> syncing…
               </span>
             )}
@@ -275,7 +275,7 @@ export const LeaderboardPage: React.FC<{
                   rank === 1 ? 'order-1 md:order-2' : rank === 2 ? 'order-2 md:order-1' : 'order-3'
                 } ${
                   isFirst
-                    ? 'border-amber-500/50 dark:border-[#ffb02e]/55 md:pb-5'
+                    ? 'border-sky-500/50 dark:border-sky-400/55 md:pb-5'
                     : 'border-slate-200 dark:border-slate-800'
                 }`}
               >
@@ -292,10 +292,10 @@ export const LeaderboardPage: React.FC<{
                         <span
                           className={`inline-flex items-center gap-1 text-xs font-mono font-bold shrink-0 ${
                             rank === 1
-                              ? 'text-amber-600 dark:text-[#ffb02e]'
+                              ? 'text-sky-600 dark:text-sky-400'
                               : rank === 2
                                 ? 'text-slate-700 dark:text-slate-200'
-                                : 'text-orange-600 dark:text-[#ff6a3d]'
+                                : 'text-teal-600 dark:text-teal-300'
                           }`}
                         >
                           {rank === 1 && <Crown className="h-3 w-3" />}
@@ -337,7 +337,7 @@ export const LeaderboardPage: React.FC<{
                         e.stopPropagation();
                         onPeekTrader(trader.address, trader);
                       }}
-                      className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-amber-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-[#ffb02e]"
+                      className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-sky-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-sky-300"
                       title="Quick Peek"
                       aria-label={`Quick peek ${info.displayName}`}
                     >
@@ -407,7 +407,7 @@ export const LeaderboardPage: React.FC<{
               onClick={() => setCohort(c.id)}
               className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
                 cohort === c.id
-                  ? 'border border-amber-500/40 bg-amber-500/12 text-amber-700 dark:border-[#ffb02e]/40 dark:bg-[#ffb02e]/15 dark:text-[#ffb02e]'
+                  ? 'border border-sky-500/40 bg-sky-500/12 text-sky-700 dark:border-sky-400/40 dark:bg-sky-400/15 dark:text-sky-300'
                   : 'border border-slate-200 bg-slate-50 text-slate-600 hover:text-slate-900 dark:border-slate-800 dark:bg-[#090e1a] dark:text-slate-400 dark:hover:text-slate-200'
               }`}
             >
@@ -424,7 +424,7 @@ export const LeaderboardPage: React.FC<{
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Filter RISEx Vault, trader, or 0x…"
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-1.5 pl-8 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-amber-500 focus:bg-white focus:outline-none dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-[#e8edfb] dark:placeholder:text-slate-500 dark:focus:border-[#ffb02e]"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-1.5 pl-8 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-sky-500 focus:bg-white focus:outline-none dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-[#e8edfb] dark:placeholder:text-slate-500 dark:focus:border-sky-400"
             />
           </div>
           <select
@@ -433,7 +433,7 @@ export const LeaderboardPage: React.FC<{
               setSortBy(e.target.value as SortKey);
               setSortDesc(true);
             }}
-            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-900 focus:border-amber-500 focus:outline-none dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-[#e8edfb] dark:focus:border-[#ffb02e]"
+            className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-900 focus:border-sky-500 focus:outline-none dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-[#e8edfb] dark:focus:border-sky-400"
           >
             <option value="pnl">Sort: {timeframe.toUpperCase()} PnL</option>
             <option value="realized">Sort: Realized PnL</option>
@@ -455,25 +455,25 @@ export const LeaderboardPage: React.FC<{
               <tr>
                 <th className="py-3 pl-4 pr-2">Rank</th>
                 <th className="py-3 px-2">RISEx Trader</th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => toggleSort('accountValue')}>
+                <th className="py-3 px-2 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400" onClick={() => toggleSort('accountValue')}>
                   <span className="inline-flex items-center gap-1">Acct Value <ArrowDownUp className="h-3 w-3" /></span>
                 </th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => toggleSort('realized')}>
+                <th className="py-3 px-2 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400" onClick={() => toggleSort('realized')}>
                   <span className="inline-flex items-center gap-1">Realized PnL <ArrowDownUp className="h-3 w-3" /></span>
                 </th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => toggleSort('unrealized')}>
+                <th className="py-3 px-2 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400" onClick={() => toggleSort('unrealized')}>
                   <span className="inline-flex items-center gap-1">Unrealized <ArrowDownUp className="h-3 w-3" /></span>
                 </th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => toggleSort('pnl')}>
+                <th className="py-3 px-2 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400" onClick={() => toggleSort('pnl')}>
                   <span className="inline-flex items-center gap-1">{timeframe.toUpperCase()} PnL <ArrowDownUp className="h-3 w-3" /></span>
                 </th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => toggleSort('roi')}>
+                <th className="py-3 px-2 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400" onClick={() => toggleSort('roi')}>
                   <span className="inline-flex items-center gap-1">ROI % <ArrowDownUp className="h-3 w-3" /></span>
                 </th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => toggleSort('volume')}>
+                <th className="py-3 px-2 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400" onClick={() => toggleSort('volume')}>
                   <span className="inline-flex items-center gap-1">Volume <ArrowDownUp className="h-3 w-3" /></span>
                 </th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => toggleSort('winRate')}>
+                <th className="py-3 px-2 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400" onClick={() => toggleSort('winRate')}>
                   Win %
                 </th>
                 <th className="py-3 px-2 text-center">Pos</th>
@@ -484,7 +484,7 @@ export const LeaderboardPage: React.FC<{
               {loading && (
                 <tr>
                   <td colSpan={11} className="py-12 text-center text-slate-500 dark:text-slate-400">
-                    <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin text-amber-600 dark:text-[#ffb02e]" />
+                    <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin text-sky-600 dark:text-sky-400" />
                     Indexing RISEx traders & usernames…
                   </td>
                 </tr>
@@ -590,7 +590,7 @@ export const LeaderboardPage: React.FC<{
                       </td>
                       <td className="py-3 px-2 text-center font-mono">
                         {t.openPositionsCount > 0 ? (
-                          <span className="rounded bg-amber-500/12 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-[#ffb02e]/15 dark:text-[#ffb02e]">
+                          <span className="rounded bg-sky-500/12 px-1.5 py-0.5 text-[10px] font-semibold text-sky-700 dark:bg-sky-400/15 dark:text-sky-300">
                             {t.openPositionsCount}
                           </span>
                         ) : (
@@ -617,7 +617,7 @@ export const LeaderboardPage: React.FC<{
                               e.stopPropagation();
                               onPeekTrader(t.address, t);
                             }}
-                            className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 hover:border-amber-500/60 hover:text-amber-600 dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-slate-300 dark:hover:border-[#ffb02e]/60 dark:hover:text-[#ffb02e]"
+                            className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 hover:border-sky-500/60 hover:text-sky-600 dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-slate-300 dark:hover:border-sky-400/60 dark:hover:text-sky-300"
                             title="Quick peek"
                             aria-label={`Quick peek ${info.displayName}`}
                           >
@@ -647,7 +647,7 @@ export const LeaderboardPage: React.FC<{
             <button
               type="button"
               onClick={() => setPageSize((p) => p + 50)}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-800 hover:border-amber-500 dark:border-slate-700 dark:bg-[#090e1a] dark:text-[#e8edfb] dark:hover:border-[#ffb02e]"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-800 hover:border-sky-500 dark:border-slate-700 dark:bg-[#090e1a] dark:text-[#e8edfb] dark:hover:border-sky-400"
             >
               Load 50 More
             </button>

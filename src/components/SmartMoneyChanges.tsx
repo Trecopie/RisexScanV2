@@ -88,7 +88,7 @@ export const SmartMoneyChanges: React.FC<{
               onClick={() => setTier(id)}
               className={`rounded-lg border px-2.5 py-1 text-[10px] font-mono capitalize whitespace-nowrap transition-colors ${
                 tier === id
-                  ? 'border-amber-500 bg-amber-500/12 font-semibold text-amber-700 dark:border-[#ffb02e] dark:bg-[#ffb02e]/15 dark:text-[#ffb02e]'
+                  ? 'border-sky-500 bg-sky-500/12 font-semibold text-sky-700 dark:border-sky-400 dark:bg-sky-400/15 dark:text-sky-300'
                   : 'border-slate-200 text-slate-600 hover:text-slate-900 dark:border-slate-800 dark:text-slate-400 dark:hover:text-white'
               }`}
             >
@@ -128,7 +128,7 @@ export const SmartMoneyChanges: React.FC<{
                     <td className="py-2">
                       <button
                         type="button"
-                        className="flex items-center gap-2 font-semibold text-slate-900 hover:text-amber-600 dark:text-[#e8edfb] dark:hover:text-[#ffb02e] whitespace-nowrap"
+                        className="flex items-center gap-2 font-semibold text-slate-900 hover:text-sky-600 dark:text-[#e8edfb] dark:hover:text-sky-400 whitespace-nowrap"
                         onClick={() => onSelectMarket(row.marketId)}
                       >
                         <TokenBadge

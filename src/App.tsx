@@ -191,7 +191,7 @@ function AppContent() {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col text-slate-900 dark:text-[#e8edfb]">
+    <div className="relative min-h-screen flex flex-col overflow-x-clip text-slate-900 dark:text-[#e8edfb]">
       <div className="sunrise-bg" />
 
       <Navbar
@@ -203,9 +203,9 @@ function AppContent() {
         markets={markets}
       />
 
-      <main className="mx-auto w-full max-w-[1440px] flex-1 px-4 py-6 sm:px-6">
+      <main className="mx-auto w-full min-w-0 max-w-[1440px] flex-1 px-4 py-6 sm:px-6">
         {searchNotice && (
-          <div className="mb-4 rounded-xl border border-amber-500/35 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-800 dark:border-[#ffb02e]/35 dark:bg-[#ffb02e]/10 dark:text-[#ffb02e]">
+          <div className="mb-4 rounded-xl border border-sky-500/35 bg-sky-500/10 px-4 py-2.5 text-xs text-sky-800 dark:border-sky-400/35 dark:bg-sky-400/10 dark:text-sky-300">
             {searchNotice}
           </div>
         )}
@@ -290,7 +290,7 @@ function AppContent() {
               href="https://docs.risechain.com/docs/risex/about/overview"
               target="_blank"
               rel="noreferrer"
-              className="hover:text-amber-600 dark:hover:text-[#ffb02e] transition-colors"
+              className="hover:text-sky-600 dark:hover:text-sky-400 transition-colors"
             >
               RISEx Docs
             </a>
@@ -298,7 +298,7 @@ function AppContent() {
               href="https://explorer.risechain.com/"
               target="_blank"
               rel="noreferrer"
-              className="hover:text-amber-600 dark:hover:text-[#ffb02e] transition-colors"
+              className="hover:text-sky-600 dark:hover:text-sky-400 transition-colors"
             >
               RISE Blockscout
             </a>

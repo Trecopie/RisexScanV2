@@ -47,7 +47,6 @@ import type { NavTab } from './Navbar';
 import { MarketMiniChart } from './MarketMiniChart';
 import { useMarketSparklines } from '../hooks/useMarketSparklines';
 import { HistoricalInsights } from './HistoricalInsights';
-import { MarketHeatmap } from './MarketHeatmap';
 import { RisexSymbol } from './RisexSymbol';
 import { TokenBadge, TraderAvatar } from './TraderAvatar';
 import { useMarketStream } from '../context/MarketWebSocketContext';
@@ -222,7 +221,7 @@ const DefiLlamaTvlChart: React.FC<{
                   x2={getX(hoverIdx)}
                   y1={padT}
                   y2={padT + cH}
-                  stroke={isDark ? '#ffb02e' : '#d97706'}
+                  stroke={isDark ? '#38bdf8' : '#0284c7'}
                   strokeOpacity={0.65}
                   strokeDasharray="3 3"
                 />
@@ -487,15 +486,15 @@ export const OverviewPage: React.FC<{
               <button
                 type="button"
                 onClick={() => onNavigateTab('leaderboard')}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-medium text-slate-800 hover:border-amber-500/60 hover:bg-amber-50/50 dark:border-slate-700/70 dark:bg-[#070b14] dark:text-[#e8edfb] dark:hover:border-[#ffb02e]/50 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-medium text-slate-800 hover:border-sky-500/60 hover:bg-sky-50/50 dark:border-slate-700/70 dark:bg-[#070b14] dark:text-[#e8edfb] dark:hover:border-sky-400/50 transition-colors"
               >
-                <Trophy className="h-3.5 w-3.5 text-amber-600 dark:text-[#ffb02e]" />
+                <Trophy className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
                 Leaderboard
               </button>
               <button
                 type="button"
                 onClick={() => onNavigateTab('markets')}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-medium text-slate-700 hover:border-amber-500/60 hover:text-slate-900 dark:border-slate-700/70 dark:bg-[#070b14] dark:text-slate-300 dark:hover:border-[#ffb02e]/50 dark:hover:text-[#e8edfb] transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-medium text-slate-700 hover:border-teal-500/60 hover:text-slate-900 dark:border-slate-700/70 dark:bg-[#070b14] dark:text-slate-300 dark:hover:border-teal-400/50 dark:hover:text-[#e8edfb] transition-colors"
               >
                 {bundle?.activeMarketsCount ?? (markets.filter((m) => m.active).length || 53)} Active Markets
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -503,7 +502,7 @@ export const OverviewPage: React.FC<{
               <button
                 type="button"
                 onClick={() => onNavigateTab('explorer')}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-medium text-slate-700 hover:border-blue-500/60 hover:text-slate-900 dark:border-slate-700/70 dark:bg-[#070b14] dark:text-slate-300 dark:hover:border-[#46a6ff]/50 dark:hover:text-[#e8edfb] transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs font-medium text-slate-700 hover:border-indigo-500/60 hover:text-slate-900 dark:border-slate-700/70 dark:bg-[#070b14] dark:text-slate-300 dark:hover:border-indigo-400/50 dark:hover:text-[#e8edfb] transition-colors"
               >
                 <Blocks className="h-3.5 w-3.5" />
                 Block Explorer
@@ -526,7 +525,7 @@ export const OverviewPage: React.FC<{
                   value={walletInput}
                   onChange={(e) => setWalletInput(e.target.value)}
                   placeholder="Enter RISEx username (e.g. sqalf, yeff) or 0x wallet…"
-                  className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-20 text-xs font-mono text-slate-900 placeholder:text-slate-400 focus:border-amber-500 focus:outline-none dark:border-slate-700/60 dark:bg-[#05070d] dark:text-[#e8edfb] dark:placeholder:text-slate-500 dark:focus:border-[#ffb02e]"
+                  className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-20 text-xs font-mono text-slate-900 placeholder:text-slate-400 focus:border-sky-500 focus:outline-none dark:border-slate-700/60 dark:bg-[#05070d] dark:text-[#e8edfb] dark:placeholder:text-slate-500 dark:focus:border-sky-400"
                 />
                 <button
                   type="submit"
@@ -545,7 +544,7 @@ export const OverviewPage: React.FC<{
                         key={t.address}
                         type="button"
                         onClick={() => onSelectWallet(t.address)}
-                        className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-mono text-slate-700 hover:border-amber-500/60 hover:text-amber-700 dark:border-slate-800 dark:bg-[#0e1526] dark:text-slate-300 dark:hover:border-[#ffb02e]/50 dark:hover:text-[#ffb02e]"
+                        className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-mono text-slate-700 hover:border-sky-500/60 hover:text-sky-700 dark:border-slate-800 dark:bg-[#0e1526] dark:text-slate-300 dark:hover:border-sky-400/50 dark:hover:text-sky-300"
                       >
                         {info.isVault ? info.displayName : t.username || shortAddress(t.address, 5, 4)}
                       </button>
@@ -578,9 +577,9 @@ export const OverviewPage: React.FC<{
             {perpVolShare.toFixed(0)}% Perp · {(100 - perpVolShare).toFixed(0)}% RWA
           </div>
         </div>
-        <div className="sunrise-card rounded-xl p-3.5 border-t-2 border-t-amber-500/70 dark:border-t-[#ffb02e]/60">
+        <div className="sunrise-card rounded-xl p-3.5 border-t-2 border-t-sky-500/70 dark:border-t-sky-400/60">
           <div className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Open Interest</div>
-          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-amber-600 dark:text-[#ffb02e]">
+          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-sky-600 dark:text-sky-400">
             {bundle ? formatUsd(bundle.totalOpenInterestUsd, true) : '—'}
           </div>
           <div className="mt-0.5 text-[10px] font-mono text-slate-500 dark:text-slate-400">
@@ -623,7 +622,7 @@ export const OverviewPage: React.FC<{
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/80 pb-3 dark:border-slate-800/80">
           <div className="space-y-0.5">
             <div className="flex items-center gap-2">
-              <LayoutGrid className="h-4 w-4 text-amber-600 dark:text-[#ffb02e]" />
+              <LayoutGrid className="h-4 w-4 text-sky-600 dark:text-sky-400" />
               <h2 className="font-display text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-[#e8edfb]">
                 Market Dashboard
               </h2>
@@ -631,14 +630,14 @@ export const OverviewPage: React.FC<{
             <div className="font-mono text-[11px] tabular-nums text-slate-500 dark:text-slate-400">
               {dashboardData.marketCount} Active Markets · 24h Vol{' '}
               <span className="text-slate-900 dark:text-[#e8edfb] font-semibold">{formatUsd(dashboardData.totalVolume24h, true)}</span> · OI{' '}
-              <span className="text-amber-600 dark:text-[#ffb02e] font-semibold">{formatUsd(dashboardData.totalOpenInterestUsd, true)}</span>
+              <span className="text-sky-600 dark:text-sky-400 font-semibold">{formatUsd(dashboardData.totalOpenInterestUsd, true)}</span>
             </div>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] tabular-nums">
               <span className="text-emerald-600 dark:text-[#22e0a1]">{dashboardData.advancers} advancing</span>
               <span className="text-rose-600 dark:text-[#ff4d6d]">{dashboardData.decliners} declining</span>
               {dashboardData.unchanged > 0 && <span className="text-slate-500 dark:text-slate-400">{dashboardData.unchanged} unchanged</span>}
               <span className="text-slate-300 dark:text-slate-600">·</span>
-              <span className={connectionState === 'connected' ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-amber-600 dark:text-[#ffb02e]'}>
+              <span className={connectionState === 'connected' ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-sky-600 dark:text-sky-400'}>
                 {connectionState === 'connected' ? 'Oracle WS connected' : 'Oracle WS reconnecting'}
               </span>
               <span className="text-slate-500">· 24h volume/OI via REST snapshots</span>
@@ -686,7 +685,7 @@ export const OverviewPage: React.FC<{
             <button
               type="button"
               onClick={() => onNavigateTab('markets')}
-              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-mono font-semibold text-amber-600 whitespace-nowrap shrink-0 hover:border-amber-500/60 dark:border-slate-800 dark:bg-[#080d18] dark:text-[#ffb02e] dark:hover:border-[#ffb02e]/50 transition-colors"
+              className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-mono font-semibold text-sky-600 whitespace-nowrap shrink-0 hover:border-sky-500/60 dark:border-slate-800 dark:bg-[#080d18] dark:text-sky-400 dark:hover:border-sky-400/50 transition-colors"
             >
               Screener →
             </button>
@@ -698,12 +697,12 @@ export const OverviewPage: React.FC<{
           <div className="rounded-xl border border-slate-200 bg-slate-50/85 p-3.5 space-y-2.5 dark:border-slate-800/80 dark:bg-[#070b14]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="flex h-6 w-6 items-center justify-center rounded-md border border-amber-500/35 bg-amber-500/12 text-amber-600 dark:border-[#ffb02e]/30 dark:bg-[#ffb02e]/12 dark:text-[#ffb02e]">
+                <span className="flex h-6 w-6 items-center justify-center rounded-md border border-sky-500/35 bg-sky-500/12 text-sky-600 dark:border-sky-400/30 dark:bg-sky-400/12 dark:text-sky-400">
                   <Zap className="h-3.5 w-3.5" />
                 </span>
                 <h3 className="font-display text-sm font-bold text-slate-900 dark:text-[#e8edfb]">24h Volume</h3>
               </div>
-              <span className="font-mono text-[10px] uppercase tracking-wider text-amber-600 dark:text-[#ffb02e]">Liquidity</span>
+              <span className="font-mono text-[10px] uppercase tracking-wider text-sky-600 dark:text-sky-400">Liquidity</span>
             </div>
 
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
@@ -714,12 +713,12 @@ export const OverviewPage: React.FC<{
                     key={entry.marketId}
                     type="button"
                     onClick={() => onSelectMarket(entry.marketId)}
-                    className="group flex flex-col justify-between gap-2 rounded-lg border border-amber-500/25 bg-white p-2.5 text-left hover:border-amber-500/60 hover:bg-amber-50/35 dark:border-[#ffb02e]/20 dark:bg-[#0b1120] dark:hover:border-[#ffb02e]/55 dark:hover:bg-[#111a30] transition-colors min-w-0"
+                    className="group flex flex-col justify-between gap-2 rounded-lg border border-sky-500/25 bg-white p-2.5 text-left hover:border-sky-500/60 hover:bg-sky-50/35 dark:border-sky-400/20 dark:bg-[#0b1120] dark:hover:border-sky-400/55 dark:hover:bg-[#111a30] transition-colors min-w-0"
                   >
                     <div className="flex items-center justify-between gap-1.5 w-full min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <TokenBadge symbol={entry.symbol} category={entry.sector} size={20} />
-                        <span className="font-display text-xs font-bold text-slate-900 truncate group-hover:text-amber-600 dark:text-[#e8edfb] dark:group-hover:text-[#ffb02e] transition-colors">
+                        <span className="font-display text-xs font-bold text-slate-900 truncate group-hover:text-sky-600 dark:text-[#e8edfb] dark:group-hover:text-sky-300 transition-colors">
                           {entry.symbol}
                         </span>
                         <span className="font-mono text-[9px] text-slate-500">#{idx + 1}</span>
@@ -737,7 +736,7 @@ export const OverviewPage: React.FC<{
                         </div>
                       </div>
                       <div className="shrink-0 text-right">
-                        <div className="rounded border border-amber-500/35 bg-amber-500/12 px-1.5 py-0.5 font-mono text-[11px] font-bold tabular-nums text-amber-700 dark:border-[#ffb02e]/30 dark:bg-[#ffb02e]/14 dark:text-[#ffb02e]">
+                        <div className="rounded border border-sky-500/35 bg-sky-500/12 px-1.5 py-0.5 font-mono text-[11px] font-bold tabular-nums text-sky-700 dark:border-sky-400/30 dark:bg-sky-400/14 dark:text-sky-300">
                           {formatUsd(entry.volume24h, true)}
                         </div>
                         <div
@@ -921,7 +920,7 @@ export const OverviewPage: React.FC<{
         <div className="sunrise-card rounded-2xl p-4 sm:p-5 lg:col-span-5 flex flex-col justify-between space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Layers className="h-4 w-4 text-amber-600 dark:text-[#ffb02e]" />
+              <Layers className="h-4 w-4 text-sky-600 dark:text-sky-400" />
               <h2 className="font-display text-base font-bold text-slate-900 dark:text-[#e8edfb]">
                 Perps vs RWA Breakdown
               </h2>
@@ -929,7 +928,7 @@ export const OverviewPage: React.FC<{
             <button
               type="button"
               onClick={() => onNavigateTab('markets')}
-              className="text-xs font-mono font-semibold text-amber-600 hover:underline dark:text-[#ffb02e]"
+              className="text-xs font-mono font-semibold text-sky-600 hover:underline dark:text-sky-400"
             >
               All Sectors →
             </button>
@@ -949,11 +948,11 @@ export const OverviewPage: React.FC<{
             </div>
             <div>
               <div className="mb-1 flex justify-between text-[11px] font-mono">
-                <span className="text-amber-600 dark:text-[#ffb02e]">Crypto Perps {perpOiShare.toFixed(1)}% OI</span>
+                <span className="text-sky-600 dark:text-sky-400">Crypto Perps {perpOiShare.toFixed(1)}% OI</span>
                 <span className="text-violet-600 dark:text-[#8b7bff]">RWA {(100 - perpOiShare).toFixed(1)}% OI</span>
               </div>
               <div className="flex h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
-                <div className="bg-amber-500 dark:bg-[#ffb02e]" style={{ width: `${perpOiShare}%` }} />
+                <div className="bg-sky-500 dark:bg-sky-400" style={{ width: `${perpOiShare}%` }} />
                 <div className="bg-violet-500 dark:bg-[#8b7bff]" style={{ width: `${100 - perpOiShare}%` }} />
               </div>
             </div>
@@ -968,7 +967,7 @@ export const OverviewPage: React.FC<{
                   : sec.id === 'stocks'
                     ? 'border-blue-500/35 dark:border-[#46a6ff]/30'
                     : sec.id === 'commodity'
-                      ? 'border-amber-500/40 dark:border-[#facc15]/30'
+                      ? 'border-teal-500/40 dark:border-teal-400/30'
                       : 'border-violet-500/35 dark:border-[#8b7bff]/30';
               return (
                 <button
@@ -983,7 +982,7 @@ export const OverviewPage: React.FC<{
                     <span className="font-display text-xs font-bold text-slate-900 dark:text-[#e8edfb]">{sec.label}</span>
                     <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400">{sec.count} mkts</span>
                   </div>
-                  <div className="mt-2 font-mono text-sm font-bold tabular-nums text-amber-600 dark:text-[#ffb02e]">
+                  <div className="mt-2 font-mono text-sm font-bold tabular-nums text-sky-600 dark:text-sky-400">
                     {formatUsd(sec.volume24h, true)}
                     <span className="ml-1.5 text-[10px] font-normal text-slate-500 dark:text-slate-400">
                       ({sec.volumeSharePct.toFixed(1)}%)
@@ -1034,7 +1033,7 @@ export const OverviewPage: React.FC<{
         <div className="sunrise-card rounded-2xl p-4 space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-display font-bold text-slate-900 dark:text-[#e8edfb]">Indexed Open Interest Bias</span>
-            <span className="font-mono text-xs font-bold text-amber-600 dark:text-[#ffb02e]">
+            <span className="font-mono text-xs font-bold text-sky-600 dark:text-sky-400">
               {prof ? `${prof.longOiSharePct.toFixed(1)}% Long` : '—'}
             </span>
           </div>
@@ -1091,7 +1090,7 @@ export const OverviewPage: React.FC<{
         <div className="sunrise-card rounded-2xl p-4 sm:p-5 lg:col-span-6 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-amber-600 dark:text-[#ffb02e]" />
+              <BarChart3 className="h-4 w-4 text-sky-600 dark:text-sky-400" />
               <h2 className="font-display text-base font-bold text-slate-900 dark:text-[#e8edfb]">
                 Open Interest Leaders
               </h2>
@@ -1107,13 +1106,13 @@ export const OverviewPage: React.FC<{
                 key={item.marketId}
                 type="button"
                 onClick={() => onSelectMarket(item.marketId)}
-                className="group rounded-xl border border-slate-200 bg-slate-50/80 p-2.5 text-left hover:border-amber-500/60 hover:bg-amber-50/40 dark:border-slate-800/80 dark:bg-[#090e1a] dark:hover:border-[#ffb02e]/45 dark:hover:bg-[#11192e] transition-all"
+                className="group rounded-xl border border-slate-200 bg-slate-50/80 p-2.5 text-left hover:border-sky-500/60 hover:bg-sky-50/40 dark:border-slate-800/80 dark:bg-[#090e1a] dark:hover:border-sky-400/45 dark:hover:bg-[#11192e] transition-all"
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="font-mono text-[10px] text-slate-500 w-4">#{idx + 1}</span>
                     <TokenBadge symbol={item.symbol} category={item.category} size={22} />
-                    <span className="font-display text-xs font-bold text-slate-900 truncate group-hover:text-amber-600 dark:text-[#e8edfb] dark:group-hover:text-[#ffb02e]">
+                    <span className="font-display text-xs font-bold text-slate-900 truncate group-hover:text-sky-600 dark:text-[#e8edfb] dark:group-hover:text-sky-300">
                       {item.symbol}
                     </span>
                   </div>
@@ -1126,7 +1125,7 @@ export const OverviewPage: React.FC<{
                 </div>
                 <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-amber-500 to-emerald-500 dark:from-[#ffb02e] dark:to-[#22e0a1]"
+                    className="h-full rounded-full bg-gradient-to-r from-sky-500 to-teal-500 dark:from-sky-400 dark:to-[#22e0a1]"
                     style={{ width: `${Math.max(4, item.relTopPct)}%` }}
                   />
                 </div>
@@ -1193,12 +1192,6 @@ export const OverviewPage: React.FC<{
         </div>
       </section>
 
-      <MarketHeatmap
-        markets={markets}
-        onSelectMarket={onSelectMarket}
-        onOpenScreener={() => onNavigateTab('markets')}
-      />
-
       {/* Persistent Watchlist Strip */}
       <section className="space-y-2.5">
         <div className="flex items-center justify-between">
@@ -1209,7 +1202,7 @@ export const OverviewPage: React.FC<{
             <button
               type="button"
               onClick={() => setAddWatchOpen((v) => !v)}
-              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700 hover:border-amber-500/60 hover:text-amber-600 dark:border-slate-700/60 dark:bg-[#0e1526] dark:text-slate-300 dark:hover:border-[#ffb02e]/50 dark:hover:text-[#ffb02e]"
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-700 hover:border-sky-500/60 hover:text-sky-600 dark:border-slate-700/60 dark:bg-[#0e1526] dark:text-slate-300 dark:hover:border-sky-400/50 dark:hover:text-sky-300"
             >
               <Plus className="h-3.5 w-3.5" />
               Customize
@@ -1256,13 +1249,13 @@ export const OverviewPage: React.FC<{
               <div
                 key={m.market_id}
                 onClick={() => onSelectMarket(String(m.market_id))}
-                className="sunrise-card group cursor-pointer rounded-xl p-4 hover:border-amber-500/50 dark:hover:border-[#ffb02e]/45 transition-all"
+                className="sunrise-card group cursor-pointer rounded-xl p-4 hover:border-sky-500/50 dark:hover:border-sky-400/45 transition-all"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2.5">
                     <TokenBadge symbol={m.base_asset_symbol} category={m.category} size={30} />
                     <div>
-                      <div className="font-display text-sm font-bold text-slate-900 group-hover:text-amber-600 dark:text-[#e8edfb] dark:group-hover:text-[#ffb02e] transition-colors">
+                      <div className="font-display text-sm font-bold text-slate-900 group-hover:text-sky-600 dark:text-[#e8edfb] dark:group-hover:text-sky-300 transition-colors">
                         {m.display_name}
                       </div>
                       <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400">
@@ -1315,7 +1308,7 @@ export const OverviewPage: React.FC<{
             <button
               type="button"
               onClick={() => onNavigateTab('explorer')}
-              className="text-xs font-medium text-amber-600 hover:underline dark:text-[#ffb02e]"
+              className="text-xs font-medium text-sky-600 hover:underline dark:text-sky-400"
             >
               Explorer Feed →
             </button>
@@ -1379,13 +1372,13 @@ export const OverviewPage: React.FC<{
         <div className="sunrise-card flex h-full flex-col rounded-2xl p-4 lg:col-span-6">
           <div className="mb-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-amber-600 dark:text-[#ffb02e]" />
+              <Users className="h-4 w-4 text-sky-600 dark:text-sky-400" />
               <h2 className="font-display text-base font-bold text-slate-900 dark:text-[#e8edfb]">Top Traders by PnL</h2>
             </div>
             <button
               type="button"
               onClick={() => onNavigateTab('leaderboard')}
-              className="text-xs font-medium text-amber-600 hover:underline dark:text-[#ffb02e]"
+              className="text-xs font-medium text-sky-600 hover:underline dark:text-sky-400"
             >
               Full Leaderboard →
             </button>
@@ -1457,7 +1450,7 @@ export const OverviewPage: React.FC<{
                           }}
                           title="Quick peek trader"
                           aria-label={`Quick peek ${info.displayName}`}
-                          className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-amber-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-[#ffb02e]"
+                          className="rounded-lg p-1 text-slate-500 hover:bg-slate-100 hover:text-sky-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-sky-300"
                         >
                           <Eye className="h-3.5 w-3.5" />
                         </button>

@@ -31,10 +31,10 @@ const ASSET_THEMES: Record<string, AssetTheme> = {
   ZRO: { bg: '#111622', fg: '#f8fafc', accent: '#94a3b8' },
   XMR: { bg: '#ff6600', fg: '#ffffff', accent: '#fed7aa' },
   PUMP: { bg: '#0b2217', fg: '#4ade80', accent: '#bbf7d0' },
-  CHIP: { bg: '#161b2e', fg: '#ffb02e', accent: '#fde68a' },
+  CHIP: { bg: '#102138', fg: '#38bdf8', accent: '#bae6fd' },
   '1000PEPE': { bg: '#153219', fg: '#4ade80', accent: '#bbf7d0' },
   PEPE: { bg: '#153219', fg: '#4ade80', accent: '#bbf7d0' },
-  RISE: { bg: '#ffb02e', fg: '#160a02', accent: '#ff6a3d' },
+  RISE: { bg: '#059669', fg: '#ecfdf5', accent: '#03de82' },
   SUI: { bg: '#122949', fg: '#4da2ff', accent: '#bae6fd' },
   // Commodities
   XAU: { bg: '#2d2208', fg: '#facc15', accent: '#fef08a' },
@@ -70,7 +70,7 @@ const ASSET_THEMES: Record<string, AssetTheme> = {
 };
 
 const SECTOR_DEFAULT_THEMES: Record<MarketSectorId, AssetTheme> = {
-  crypto: { bg: '#161f36', fg: '#ffb02e', accent: '#fde68a' },
+  crypto: { bg: '#111f36', fg: '#38bdf8', accent: '#bae6fd' },
   commodity: { bg: '#261e09', fg: '#facc15', accent: '#fef08a' },
   stocks: { bg: '#111f33', fg: '#46a6ff', accent: '#bae6fd' },
   index_etf: { bg: '#0d221c', fg: '#22e0a1', accent: '#a7f3d0' },

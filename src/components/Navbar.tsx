@@ -119,7 +119,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       label: 'Overview',
       icon: <Compass className="h-3.5 w-3.5" />,
       activeClass:
-        'bg-amber-500/12 text-amber-700 border-amber-500/35 dark:bg-[#ffb02e]/14 dark:text-[#ffb02e] dark:border-[#ffb02e]/35',
+        'bg-sky-500/12 text-sky-700 border-sky-500/35 dark:bg-sky-400/14 dark:text-sky-300 dark:border-sky-400/35',
     },
     {
       id: 'markets',
@@ -133,7 +133,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       label: 'Cohorts',
       icon: <Users className="h-3.5 w-3.5" />,
       activeClass:
-        'bg-violet-500/12 text-violet-700 border-violet-500/35 dark:bg-[#8b7bff]/14 dark:text-[#8b7bff] dark:border-[#8b7bff]/35',
+        'bg-violet-500/12 text-violet-700 border-violet-500/35 dark:bg-[#8b7bff]/14 dark:text-[#a78bfa] dark:border-[#8b7bff]/35',
     },
     {
       id: 'leaderboard',
@@ -154,7 +154,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       label: 'Wallet',
       icon: <Wallet className="h-3.5 w-3.5" />,
       activeClass:
-        'bg-orange-500/12 text-orange-700 border-orange-500/35 dark:bg-[#ff6a3d]/14 dark:text-[#ff6a3d] dark:border-[#ff6a3d]/35',
+        'bg-indigo-500/12 text-indigo-700 border-indigo-500/35 dark:bg-indigo-400/14 dark:text-indigo-300 dark:border-indigo-400/35',
     },
   ];
 
@@ -180,8 +180,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             <RisexSymbol className="h-4 w-4 text-emerald-600 dark:text-[#03DE82]" />
           </span>
           <div className="flex items-center gap-2 leading-tight">
-            <span className="font-display text-base font-bold tracking-tight text-slate-900 group-hover:text-amber-600 dark:text-[#e8edfb] dark:group-hover:text-[#ffb02e] transition-colors whitespace-nowrap">
-              RISEx<span className="text-amber-600 dark:text-[#ffb02e]">Scan</span>
+            <span className="font-display text-base font-bold tracking-tight text-slate-900 dark:text-[#e8edfb] transition-colors whitespace-nowrap">
+              RISEx<span className="sunrise-gradient-text">Scan</span>
             </span>
             <span className="hidden lg:inline-flex items-center gap-1 text-[10px] font-mono text-slate-500 dark:text-slate-400">
               <Activity className="h-2.5 w-2.5 text-emerald-600 dark:text-[#03DE82]" />
@@ -225,7 +225,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               setSearchOpen(true);
             }}
             aria-label="Toggle search"
-            className="md:hidden shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-700 hover:border-amber-500/60 hover:text-amber-600 dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-slate-300 dark:hover:border-[#ffb02e]/60 dark:hover:text-[#ffb02e]"
+            className="md:hidden shrink-0 rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-700 hover:border-sky-500/60 hover:text-sky-600 dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-slate-300 dark:hover:border-sky-400/60 dark:hover:text-sky-300"
           >
             {mobileSearchOpen ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
           </button>
@@ -250,11 +250,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                   setSearchOpen(true);
                 }}
                 placeholder="Search wallet, RISEx Vault, ticker, tx…"
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 md:py-1.5 pl-9 pr-12 text-xs text-slate-900 placeholder:text-slate-400 shadow-lg md:shadow-none focus:border-amber-500 focus:bg-white focus:outline-none dark:border-slate-700/55 dark:bg-[#090e1a] dark:text-[#e8edfb] dark:placeholder:text-slate-500 dark:focus:border-[#ffb02e]/60 dark:focus:bg-[#090e1a]"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 md:py-1.5 pl-9 pr-12 text-xs text-slate-900 placeholder:text-slate-400 shadow-lg md:shadow-none focus:border-sky-500 focus:bg-white focus:outline-none dark:border-slate-700/55 dark:bg-[#090e1a] dark:text-[#e8edfb] dark:placeholder:text-slate-500 dark:focus:border-sky-400/60 dark:focus:bg-[#090e1a]"
               />
               <button
                 type="submit"
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg bg-slate-200/80 px-2 py-0.5 text-[10px] font-mono font-semibold text-slate-700 hover:bg-amber-500 hover:text-white dark:bg-[#131c31] dark:text-slate-300 dark:hover:bg-[#ffb02e] dark:hover:text-[#1f0e03] transition-colors"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-lg bg-slate-200/80 px-2 py-0.5 text-[10px] font-mono font-semibold text-slate-700 hover:bg-sky-600 hover:text-white dark:bg-[#131c31] dark:text-slate-300 dark:hover:bg-sky-400 dark:hover:text-[#04131f] transition-colors"
               >
                 GO
               </button>
@@ -336,7 +336,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                               <div className="flex items-center gap-1.5 truncate text-xs font-semibold text-slate-900 dark:text-[#e8edfb]">
                                 <span className="truncate">{info.displayName}</span>
                                 {info.badgeLabel && (
-                                  <span className="text-[10px] font-mono text-amber-600 dark:text-[#ffb02e]">
+                                  <span className="text-[10px] font-mono text-violet-600 dark:text-violet-300">
                                     · {info.badgeLabel}
                                   </span>
                                 )}
@@ -372,7 +372,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     }}
                     className="w-full rounded-lg px-3 py-2 text-left text-xs text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-[#131c31]"
                   >
-                    Press Enter to resolve <span className="font-mono text-amber-600 dark:text-[#ffb02e]">{query.trim()}</span> directly via RISEx API
+                    Press Enter to resolve <span className="font-mono text-sky-600 dark:text-sky-400">{query.trim()}</span> directly via RISEx API
                   </button>
                 )}
               </div>
@@ -386,16 +386,16 @@ export const Navbar: React.FC<NavbarProps> = ({
             aria-label={theme === 'dark' ? 'Switch to White mode' : 'Switch to Dark mode'}
             title={theme === 'dark' ? 'Switch to White mode' : 'Switch to Dark mode'}
             data-testid="theme-toggle"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 whitespace-nowrap hover:border-amber-500/60 hover:bg-amber-50 hover:text-amber-700 dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-slate-200 dark:hover:border-[#ffb02e]/60 dark:hover:bg-[#131c31] dark:hover:text-[#ffb02e] transition-colors"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] font-semibold text-slate-700 whitespace-nowrap hover:border-sky-500/60 hover:bg-sky-50 hover:text-sky-700 dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-slate-200 dark:hover:border-sky-400/60 dark:hover:bg-[#131c31] dark:hover:text-sky-300 transition-colors"
           >
             {theme === 'dark' ? (
               <>
-                <Sun className="h-3.5 w-3.5 text-[#ffb02e]" />
+                <Sun className="h-3.5 w-3.5 text-sky-300" />
                 <span className="hidden sm:inline">White</span>
               </>
             ) : (
               <>
-                <Moon className="h-3.5 w-3.5 text-blue-600" />
+                <Moon className="h-3.5 w-3.5 text-sky-600" />
                 <span className="hidden sm:inline">Dark</span>
               </>
             )}
@@ -418,10 +418,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                   key={`${m.market_id}-${half}`}
                   type="button"
                   onClick={() => onSelectMarket(String(m.market_id))}
-                  className="group flex shrink-0 items-center gap-1.5 rounded-md border border-slate-200/90 bg-white px-2 py-0.5 text-[11px] font-mono tabular-nums whitespace-nowrap shadow-xs hover:border-amber-500/60 hover:bg-amber-50/40 dark:border-slate-800/80 dark:bg-[#0b1120]/90 dark:shadow-none dark:hover:border-[#ffb02e]/50 dark:hover:bg-[#121b31] transition-colors"
+                  className="group flex shrink-0 items-center gap-1.5 rounded-md border border-slate-200/90 bg-white px-2 py-0.5 text-[11px] font-mono tabular-nums whitespace-nowrap shadow-xs hover:border-sky-500/60 hover:bg-sky-50/40 dark:border-slate-800/80 dark:bg-[#0b1120]/90 dark:shadow-none dark:hover:border-sky-400/50 dark:hover:bg-[#121b31] transition-colors"
                 >
                   <TokenBadge symbol={m.base_asset_symbol} category={m.category} size={16} />
-                  <span className="font-display text-[11px] font-bold tracking-tight text-slate-900 group-hover:text-amber-600 dark:text-[#e8edfb] dark:group-hover:text-[#ffb02e] transition-colors">
+                  <span className="font-display text-[11px] font-bold tracking-tight text-slate-900 group-hover:text-sky-600 dark:text-[#e8edfb] dark:group-hover:text-sky-300 transition-colors">
                     {sym}
                   </span>
                   <span className="text-[11px] text-slate-600 dark:text-slate-300">{formatPrice(mark)}</span>

@@ -47,8 +47,8 @@ function statusMeta(status: SyncDiagnosticStatus): {
     case 'STALE_SNAPSHOT':
       return {
         label: 'STALE SNAPSHOT',
-        badgeClass: 'bg-amber-500/12 text-amber-700 border-amber-500/35 dark:bg-[#ffb02e]/15 dark:text-[#ffb02e] dark:border-[#ffb02e]/40',
-        borderClass: 'border-amber-500/40 dark:border-[#ffb02e]/40',
+        badgeClass: 'bg-indigo-500/12 text-indigo-700 border-indigo-500/35 dark:bg-indigo-400/15 dark:text-indigo-300 dark:border-indigo-400/40',
+        borderClass: 'border-indigo-500/40 dark:border-indigo-400/40',
       };
     case 'UNENRICHED':
       return {
@@ -171,7 +171,7 @@ export const LeaderboardSyncDiagnostic: React.FC<{
                 }}
                 className={`rounded-md border px-2 py-1 text-[11px] font-mono transition-colors ${
                   targetTrader.toLowerCase() === name.toLowerCase()
-                    ? 'border-amber-500/60 bg-amber-500/12 text-amber-700 font-semibold dark:border-[#ffb02e]/60 dark:bg-[#ffb02e]/15 dark:text-[#ffb02e]'
+                    ? 'border-sky-500/60 bg-sky-500/12 text-sky-700 font-semibold dark:border-sky-400/60 dark:bg-sky-400/15 dark:text-sky-300'
                     : 'border-slate-200 bg-slate-50 text-slate-600 hover:text-slate-900 dark:border-slate-800 dark:bg-[#05070d] dark:text-slate-400 dark:hover:text-[#e8edfb]'
                 }`}
               >
@@ -189,7 +189,7 @@ export const LeaderboardSyncDiagnostic: React.FC<{
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Username or 0x wallet…"
                 aria-label="Trader username or wallet address for diagnostic"
-                className="w-48 rounded-lg border border-slate-200 bg-white py-1.5 pl-8 pr-2.5 text-xs font-mono text-slate-900 placeholder:text-slate-400 focus:border-amber-500 focus:outline-none dark:border-slate-700/60 dark:bg-[#05070d] dark:text-[#e8edfb] dark:placeholder:text-slate-500 dark:focus:border-[#ffb02e]"
+                className="w-48 rounded-lg border border-slate-200 bg-white py-1.5 pl-8 pr-2.5 text-xs font-mono text-slate-900 placeholder:text-slate-400 focus:border-sky-500 focus:outline-none dark:border-slate-700/60 dark:bg-[#05070d] dark:text-[#e8edfb] dark:placeholder:text-slate-500 dark:focus:border-sky-400"
               />
             </div>
             <button
@@ -214,7 +214,7 @@ export const LeaderboardSyncDiagnostic: React.FC<{
 
       {/* Loading & Error States */}
       {loading && !report && (
-        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs font-mono text-amber-600 dark:border-slate-800 dark:bg-[#05070d] dark:text-[#ffb02e]">
+        <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-xs font-mono text-sky-600 dark:border-slate-800 dark:bg-[#05070d] dark:text-sky-400">
           <Loader2 className="h-4 w-4 animate-spin" />
           Querying cached snapshot, live realized-PnL event stream &amp; RISE Blockscout transactions…
         </div>
@@ -289,7 +289,7 @@ export const LeaderboardSyncDiagnostic: React.FC<{
                 <ul className="space-y-0.5 pt-0.5 text-xs text-slate-700 dark:text-slate-300">
                   {report.reasons.map((r, i) => (
                     <li key={i} className="flex items-start gap-1.5">
-                      <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-amber-500 dark:bg-[#ffb02e]" />
+                      <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-sky-500 dark:bg-sky-400" />
                       <span>{r}</span>
                     </li>
                   ))}
@@ -302,7 +302,7 @@ export const LeaderboardSyncDiagnostic: React.FC<{
                 type="button"
                 onClick={() => runDiagnostic(report.resolvedAddress, true)}
                 disabled={resyncing || loading}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/50 bg-amber-500/12 px-3 py-1.5 text-xs font-mono font-semibold text-amber-700 hover:bg-amber-500/20 disabled:opacity-50 dark:border-[#ffb02e]/50 dark:bg-[#ffb02e]/12 dark:text-[#ffb02e] dark:hover:bg-[#ffb02e]/20"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-sky-500/50 bg-sky-500/12 px-3 py-1.5 text-xs font-mono font-semibold text-sky-700 hover:bg-sky-500/20 disabled:opacity-50 dark:border-sky-400/50 dark:bg-sky-400/12 dark:text-sky-300 dark:hover:bg-sky-400/20"
               >
                 <RefreshCw className={`h-3.5 w-3.5 ${resyncing ? 'animate-spin' : ''}`} />
                 {resyncing ? 'Syncing…' : 'Re-sync Snapshot'}
@@ -358,7 +358,7 @@ export const LeaderboardSyncDiagnostic: React.FC<{
                       report.drift.drift24hVsRecommended === null
                         ? 'text-slate-500'
                         : Math.abs(report.drift.drift24hVsRecommended) > 25
-                          ? 'text-amber-600 dark:text-[#ffb02e]'
+                          ? 'text-indigo-600 dark:text-indigo-300'
                           : 'text-emerald-600 dark:text-[#22e0a1]'
                     }`}
                   >
@@ -386,7 +386,7 @@ export const LeaderboardSyncDiagnostic: React.FC<{
                       report.drift.drift7dVsLive === null
                         ? 'text-slate-500'
                         : Math.abs(report.drift.drift7dVsLive) > 25
-                          ? 'text-amber-600 dark:text-[#ffb02e]'
+                          ? 'text-indigo-600 dark:text-indigo-300'
                           : 'text-emerald-600 dark:text-[#22e0a1]'
                     }`}
                   >
@@ -422,7 +422,7 @@ export const LeaderboardSyncDiagnostic: React.FC<{
                       report.drift.driftTotalAllVsLive === null
                         ? 'text-slate-500'
                         : Math.abs(report.drift.driftTotalAllVsLive) > 25
-                          ? 'text-amber-600 dark:text-[#ffb02e]'
+                          ? 'text-indigo-600 dark:text-indigo-300'
                           : 'text-emerald-600 dark:text-[#22e0a1]'
                     }`}
                   >
@@ -463,7 +463,7 @@ export const LeaderboardSyncDiagnostic: React.FC<{
                   onClick={() => setStreamTab('realized')}
                   className={`rounded-md px-2.5 py-1 font-mono transition-colors ${
                     streamTab === 'realized'
-                      ? 'bg-white text-amber-600 shadow-xs dark:bg-[#131c31] dark:text-[#ffb02e]'
+                      ? 'bg-white text-sky-600 shadow-xs dark:bg-[#131c31] dark:text-sky-300'
                       : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                   }`}
                 >
@@ -474,7 +474,7 @@ export const LeaderboardSyncDiagnostic: React.FC<{
                   onClick={() => setStreamTab('trades')}
                   className={`rounded-md px-2.5 py-1 font-mono transition-colors ${
                     streamTab === 'trades'
-                      ? 'bg-white text-amber-600 shadow-xs dark:bg-[#131c31] dark:text-[#ffb02e]'
+                      ? 'bg-white text-sky-600 shadow-xs dark:bg-[#131c31] dark:text-sky-300'
                       : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                   }`}
                 >
@@ -485,7 +485,7 @@ export const LeaderboardSyncDiagnostic: React.FC<{
                   onClick={() => setStreamTab('onchain')}
                   className={`rounded-md px-2.5 py-1 font-mono transition-colors ${
                     streamTab === 'onchain'
-                      ? 'bg-white text-amber-600 shadow-xs dark:bg-[#131c31] dark:text-[#ffb02e]'
+                      ? 'bg-white text-sky-600 shadow-xs dark:bg-[#131c31] dark:text-sky-300'
                       : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                   }`}
                 >
@@ -653,7 +653,7 @@ export const LeaderboardSyncDiagnostic: React.FC<{
                             <ExternalLink className="h-2.5 w-2.5" />
                           </a>
                         </td>
-                        <td className="py-1.5 px-2 text-amber-600 dark:text-[#ffb02e]">{tx.method}</td>
+                        <td className="py-1.5 px-2 text-sky-600 dark:text-sky-400">{tx.method}</td>
                         <td className="py-1.5 px-2 text-slate-700 dark:text-slate-300">
                           {tx.toName || (tx.toAddress ? shortAddress(tx.toAddress, 6, 4) : '—')}
                         </td>

@@ -152,7 +152,7 @@ const SeriesCard: React.FC<{
                   x2={getX(hoverIdx)}
                   y1={padT}
                   y2={padT + cH}
-                  stroke={isDark ? '#ffb02e' : '#d97706'}
+                  stroke={isDark ? '#38bdf8' : '#0284c7'}
                   strokeOpacity={0.55}
                   strokeDasharray="3 3"
                 />
@@ -252,7 +252,7 @@ export const HistoricalInsights: React.FC = () => {
     <section className="sunrise-card rounded-2xl p-4 sm:p-5 space-y-3" aria-label="Historical market analytics">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <BarChart3 className="h-4 w-4 text-amber-600 dark:text-[#ffb02e]" />
+          <BarChart3 className="h-4 w-4 text-sky-600 dark:text-sky-400" />
           <div>
             <h2 className="font-display text-base font-bold text-slate-900 dark:text-[#e8edfb]">
               Historical Market Analytics
@@ -271,7 +271,7 @@ export const HistoricalInsights: React.FC = () => {
               onClick={() => setWindowDays(w)}
               className={`rounded-md px-2.5 py-1 text-[11px] font-mono font-semibold whitespace-nowrap transition-colors ${
                 windowDays === w
-                  ? 'bg-amber-500 text-white shadow-xs dark:bg-[#ffb02e] dark:text-[#1f0e03]'
+                  ? 'sunrise-gradient-btn font-semibold'
                   : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-[#e8edfb]'
               }`}
             >
@@ -286,7 +286,7 @@ export const HistoricalInsights: React.FC = () => {
           title="Open Interest History"
           subtitle="Daily RISEx OI · USD"
           points={oiPoints}
-          color={isDark ? '#ffb02e' : '#d97706'}
+          color={isDark ? '#38bdf8' : '#0284c7'}
           gradId="oiHistGrad"
           latestValue={data?.latestOiUsd || 0}
           isDark={isDark}

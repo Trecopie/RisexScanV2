@@ -7,62 +7,99 @@
     --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
-    /* Daylight White Mode */
-    --bg: #f5f7fb;
-    --bg1: #eef2f8;
+    /* Daylight White Mode — Crisp Slate Surfaces */
+    --bg: #f4f7fb;
+    --bg1: #e9eff7;
     --sur: #ffffff;
     --sur2: #f1f5fb;
-    --inset: #f8fafc;
-    --line: rgba(15, 23, 42, 0.09);
-    --line2: rgba(15, 23, 42, 0.18);
-    --tx: #0f172a;
-    --tx2: #334155;
+    --inset: #f8fafd;
+    --line: rgba(15, 23, 42, 0.10);
+    --line2: rgba(15, 23, 42, 0.20);
+    --tx: #0b1220;
+    --tx2: #243247;
     --dim: #475569;
     --faint: #64748b;
 
-    /* Tasteful High-Contrast Semantic Accents */
-    --sun: #d97706;
-    --sun-bg: rgba(217, 119, 6, 0.11);
-    --dawn: #ea580c;
-    --flare: #db2777;
-    --long: #059669;
-    --short: #e11d48;
-    --info: #2563eb;
-    --violet: #7c3aed;
-    --teal: #0d9488;
-    --axis-tx: #64748b;
+    /* Prism Accent Grade — Deep Teal, Slate Cyan & Soft Indigo */
+    --prism-teal: #0f766e;
+    --prism-teal-strong: #115e59;
+    --prism-teal-soft: rgba(15, 118, 110, 0.10);
+    --prism-indigo: #4f46e5;
+    --prism-indigo-strong: #4338ca;
+    --prism-indigo-soft: rgba(79, 70, 229, 0.10);
+    --prism-cyan: #0e7490;
+    --prism-gradient: linear-gradient(135deg, #0f766e 0%, #0e7490 48%, #4f46e5 100%);
+    --prism-gradient-hover: linear-gradient(135deg, #115e59 0%, #155e75 48%, #4338ca 100%);
+    --prism-text-gradient: linear-gradient(135deg, #0f766e 0%, #0e7490 52%, #4f46e5 100%);
+    --prism-btn-tx: #ffffff;
+
+    /* Semantic Financial Terminal Tokens */
+    --long: #047857;
+    --short: #be123c;
+    --info: #4f46e5;
+    --violet: #6366f1;
+    --teal: var(--prism-teal);
+    --axis-tx: #475569;
     --grid-line: rgba(15, 23, 42, 0.08);
-    --track-bg: #e2e8f0;
-    --card-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 10px 26px -14px rgba(15, 23, 42, 0.08);
+    --track-bg: #dce4f0;
+    --focus-ring: rgba(79, 70, 229, 0.42);
+    --card-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 22px -14px rgba(15, 23, 42, 0.09);
+
+    /* Legacy Token Aliases (mapped cleanly to Prism) */
+    --sun: var(--prism-teal);
+    --sun-bg: var(--prism-teal-soft);
+    --dawn: var(--prism-cyan);
+    --flare: var(--prism-indigo);
   }
 
   .dark {
-    /* Obsidian Prism Dark Mode */
-    --bg: #05070d;
-    --bg1: #090e1a;
-    --sur: #0a0f1c;
-    --sur2: #131c31;
-    --inset: #070b14;
-    --line: rgba(148, 163, 205, 0.14);
-    --line2: rgba(148, 163, 205, 0.28);
-    --tx: #e8edfb;
+    /* Obsidian Prism Dark Mode — Deep Slate Terminal Canvas */
+    --bg: #05080f;
+    --bg1: #090f1c;
+    --sur: #0b1120;
+    --sur2: #121b30;
+    --inset: #070c17;
+    --line: rgba(148, 163, 205, 0.15);
+    --line2: rgba(148, 163, 205, 0.30);
+    --tx: #eef2ff;
     --tx2: #cbd5e1;
-    --dim: #95a3c5;
+    --dim: #94a3b8;
     --faint: #64748b;
 
-    --sun: #ffb02e;
-    --sun-bg: rgba(255, 176, 46, 0.14);
-    --dawn: #ff6a3d;
-    --flare: #ff3d81;
-    --long: #22e0a1;
-    --short: #ff4d6d;
-    --info: #46a6ff;
-    --violet: #8b7bff;
-    --teal: #03de82;
-    --axis-tx: #7c8bb0;
+    /* Prism Accent Grade — Luminous Teal & Soft Indigo */
+    --prism-teal: #14b8a6;
+    --prism-teal-strong: #2dd4bf;
+    --prism-teal-soft: rgba(20, 184, 166, 0.14);
+    --prism-indigo: #818cf8;
+    --prism-indigo-strong: #a5b4fc;
+    --prism-indigo-soft: rgba(129, 140, 248, 0.14);
+    --prism-cyan: #22d3ee;
+    --prism-gradient: linear-gradient(135deg, #0f766e 0%, #155e75 46%, #4338ca 100%);
+    --prism-gradient-hover: linear-gradient(135deg, #0d9488 0%, #0e7490 46%, #4f46e5 100%);
+    --prism-text-gradient: linear-gradient(135deg, #2dd4bf 0%, #38bdf8 50%, #818cf8 100%);
+    --prism-btn-tx: #f8fafc;
+
+    /* Semantic Financial Terminal Tokens */
+    --long: #10b981;
+    --short: #fb7185;
+    --info: #818cf8;
+    --violet: #a5b4fc;
+    --teal: var(--prism-teal);
+    --axis-tx: #8292b8;
     --grid-line: rgba(148, 163, 205, 0.12);
     --track-bg: #1e293b;
+    --focus-ring: rgba(129, 140, 248, 0.45);
     --card-shadow: none;
+
+    /* Legacy Token Aliases (mapped cleanly to Prism) */
+    --sun: var(--prism-teal);
+    --sun-bg: var(--prism-teal-soft);
+    --dawn: var(--prism-cyan);
+    --flare: var(--prism-indigo);
+  }
+
+  html, body {
+    overflow-x: clip;
   }
 
   body {
@@ -70,7 +107,6 @@
     background-color: var(--bg);
     color: var(--tx);
     letter-spacing: 0.005em;
-    overflow-x: hidden;
     transition: background-color 180ms ease, color 180ms ease;
   }
 
@@ -86,29 +122,37 @@
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
+
+  :focus-visible {
+    outline: 2px solid var(--prism-indigo);
+    outline-offset: 2px;
+  }
 }
 
-.sunrise-bg {
+.sunrise-bg,
+.prism-bg {
   position: fixed;
   inset: 0;
   z-index: -2;
   pointer-events: none;
   background:
-    radial-gradient(880px 380px at 14% -8%, rgba(37, 99, 235, 0.065), transparent 65%),
-    radial-gradient(820px 380px at 88% -10%, rgba(217, 119, 6, 0.06), transparent 65%),
-    radial-gradient(700px 340px at 52% 8%, rgba(5, 150, 105, 0.04), transparent 70%),
+    radial-gradient(880px 380px at 14% -8%, rgba(15, 118, 110, 0.055), transparent 65%),
+    radial-gradient(820px 380px at 88% -10%, rgba(79, 70, 229, 0.055), transparent 65%),
+    radial-gradient(700px 340px at 52% 8%, rgba(14, 116, 144, 0.04), transparent 70%),
     var(--bg);
 }
 
-.dark .sunrise-bg {
+.dark .sunrise-bg,
+.dark .prism-bg {
   background:
-    radial-gradient(880px 420px at 12% -10%, rgba(70, 166, 255, 0.07), transparent 65%),
-    radial-gradient(900px 420px at 86% -12%, rgba(255, 176, 46, 0.075), transparent 65%),
-    radial-gradient(680px 340px at 52% 6%, rgba(34, 224, 161, 0.045), transparent 70%),
-    #060911;
+    radial-gradient(880px 420px at 12% -10%, rgba(20, 184, 166, 0.065), transparent 65%),
+    radial-gradient(900px 420px at 86% -12%, rgba(99, 102, 241, 0.075), transparent 65%),
+    radial-gradient(680px 340px at 52% 6%, rgba(14, 116, 144, 0.05), transparent 70%),
+    var(--bg);
 }
 
-.sunrise-card {
+.sunrise-card,
+.prism-card {
   background: var(--sur);
   border: 1px solid var(--line);
   box-shadow: var(--card-shadow);
@@ -124,26 +168,30 @@
   border: 1px solid var(--line);
 }
 
-.sunrise-gradient-text {
-  color: var(--sun);
+.sunrise-gradient-text,
+.prism-gradient-text {
+  background: var(--prism-text-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
-.sunrise-gradient-btn {
-  background: #d97706;
-  color: #ffffff;
+.sunrise-gradient-btn,
+.prism-gradient-btn {
+  background: var(--prism-gradient);
+  color: var(--prism-btn-tx);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: background 180ms ease, border-color 180ms ease, filter 180ms ease;
 }
 
-.sunrise-gradient-btn:hover {
-  background: #b45309;
+.sunrise-gradient-btn:hover,
+.prism-gradient-btn:hover {
+  background: var(--prism-gradient-hover);
 }
 
-.dark .sunrise-gradient-btn {
-  background: #ffb02e;
-  color: #160a02;
-}
-
-.dark .sunrise-gradient-btn:hover {
-  background: #ffbe4f;
+.dark .sunrise-gradient-btn,
+.dark .prism-gradient-btn {
+  border-color: rgba(129, 140, 248, 0.28);
 }
 
 @keyframes ticker-scroll {
@@ -195,5 +243,5 @@
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--sun);
+  background: var(--prism-teal);
 }

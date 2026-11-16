@@ -26,11 +26,29 @@ export const createPool = (): Pool | null => {
       password: process.env.SQL_PASSWORD,
       database: process.env.SQL_DB_NAME,
       max: 10,
+      idleTimeoutMillis: 15000,
       connectionTimeoutMillis: 15000,
+      keepAlive: true,
+      keepAliveInitialDelayMillis: 5000,
     });
 
-    global._postgresPool.on('error', (err) => {
-      console.error('Unexpected error on idle SQL pool client:', err);
+    global._postgresPool.on('error', (err: any) => {
+      const code = String(err?.code || '');
+      const msg = String(err?.message || '');
+      const isExpectedIdleRecycle =
+        code === '57P01' ||
+        code === '57P02' ||
+        code === '57P03' ||
+        code === 'ECONNRESET' ||
+        code === 'ETIMEDOUT' ||
+        code === 'EPIPE' ||
+        /Connection terminated unexpectedly|terminating connection due to administrator command|ECONNRESET|socket hang up/i.test(
+          msg
+        );
+      if (isExpectedIdleRecycle) {
+        return;
+      }
+      console.warn('SQL pool client recycled:', msg || err);
     });
   }
   return global._postgresPool;

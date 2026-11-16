@@ -49,9 +49,9 @@ async function fetchJson(url: string, options: RequestInit = {}, timeoutMs = 100
           ...(options.headers || {}),
         },
       });
-      if (res.status === 429 && attempt < retries) {
+      if ((res.status === 429 || res.status >= 500) && attempt < retries) {
         const retryAfter = Number(res.headers.get('retry-after')) || 0;
-        const waitMs = Math.min(2500, Math.max(700, retryAfter * 1000));
+        const waitMs = Math.min(2500, Math.max(450 * (attempt + 1), retryAfter * 1000));
         await new Promise((r) => setTimeout(r, waitMs));
         continue;
       }
@@ -60,6 +60,13 @@ async function fetchJson(url: string, options: RequestInit = {}, timeoutMs = 100
         throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
       }
       return await res.json();
+    } catch (err) {
+      if (attempt < retries) {
+        const waitMs = Math.min(2500, 450 * (attempt + 1));
+        await new Promise((r) => setTimeout(r, waitMs));
+        continue;
+      }
+      throw err;
     } finally {
       clearTimeout(timer);
     }
@@ -205,7 +212,15 @@ async function cachedCallSWR<T>(
     return hit.value as T;
   }
 
-  return refresh();
+  try {
+    return await refresh();
+  } catch (err) {
+    if (hit !== undefined) {
+      hit.staleUntil = Date.now() + 10000;
+      return hit.value as T;
+    }
+    throw err;
+  }
 }
 
 async function cachedCall<T>(
@@ -353,35 +368,57 @@ async function restoreIndexFromCloudSql(): Promise<void> {
   }
 }
 
+let marketsInFlight: Promise<any[]> | null = null;
+
 async function getMarkets(force = false): Promise<any[]> {
   if (!force && marketsCache.length > 0 && Date.now() - marketsUpdatedAt < 15000) {
     return marketsCache;
   }
-  const json = await fetchJson(`${RISEX_API}/v1/markets`);
-  const list = json?.data?.markets || [];
-  if (list.length > 0) {
-    marketsCache = list;
-    marketsUpdatedAt = Date.now();
-    if (historyStore.ready && Date.now() - lastMarketHistorySample > 3_600_000) {
-      lastMarketHistorySample = Date.now();
-      const sampledAt = lastMarketHistorySample;
-      const samples = list
-        .filter((m: any) => m.active !== false)
-        .map((m: any) => ({
-          marketId: String(m.market_id),
-          observedAt: sampledAt,
-          openInterestUsd: safeNum(m.open_interest) * safeNum(m.mark_price || m.last_price),
-          volume24hUsd: safeNum(m.quote_volume_24h),
-          fundingRate: safeNum(m.current_funding_rate),
-          markPrice: safeNum(m.mark_price || m.last_price),
-        }));
-      historyStore.recordMarketSamples(samples).catch((err) => {
-        lastMarketHistorySample = 0;
-        console.error('Market sample persistence warning:', err);
-      });
-    }
+  if (!force && marketsInFlight) {
+    return marketsInFlight;
   }
-  return marketsCache;
+
+  const run = (async () => {
+    try {
+      const json = await fetchJson(`${RISEX_API}/v1/markets`, {}, 10000, 2);
+      const list = json?.data?.markets || [];
+      if (list.length > 0) {
+        marketsCache = list;
+        marketsUpdatedAt = Date.now();
+        if (historyStore.ready && Date.now() - lastMarketHistorySample > 3_600_000) {
+          lastMarketHistorySample = Date.now();
+          const sampledAt = lastMarketHistorySample;
+          const samples = list
+            .filter((m: any) => m.active !== false)
+            .map((m: any) => ({
+              marketId: String(m.market_id),
+              observedAt: sampledAt,
+              openInterestUsd: safeNum(m.open_interest) * safeNum(m.mark_price || m.last_price),
+              volume24hUsd: safeNum(m.quote_volume_24h),
+              fundingRate: safeNum(m.current_funding_rate),
+              markPrice: safeNum(m.mark_price || m.last_price),
+            }));
+          historyStore.recordMarketSamples(samples).catch((err) => {
+            lastMarketHistorySample = 0;
+            console.error('Market sample persistence warning:', err);
+          });
+        }
+      }
+      return marketsCache;
+    } catch (err) {
+      if (marketsCache.length > 0) {
+        return marketsCache;
+      }
+      throw err;
+    } finally {
+      marketsInFlight = null;
+    }
+  })();
+
+  if (!force) {
+    marketsInFlight = run;
+  }
+  return run;
 }
 
 async function getSystemConfig(): Promise<any> {
@@ -1752,7 +1789,7 @@ async function startServer() {
   app.get('/api/leaderboard', async (req: Request, res: Response) => {
     const limitParam = req.query.limit ? Math.max(1, Math.min(2000, Number(req.query.limit))) : null;
     const cacheKey = limitParam ? `leaderboard:limit:${limitParam}` : 'leaderboard:full';
-    const payload = await cachedCall(cacheKey, 4000, async () => {
+    const payload = await cachedCallSWR(cacheKey, 4000, 60000, async () => {
       const all = Array.from(tradersMap.values());
       const stripPositions = (t: TraderRecord) => {
         const { positions: _positions, ...rest } = t;
@@ -2045,7 +2082,7 @@ async function startServer() {
       };
       const cfg = intervalMap[resolution] || intervalMap['1H'];
 
-      const payload = await cachedCall(`candles:${marketId}:${resolution}`, 15000, async () => {
+      const payload = await cachedCallSWR(`candles:${marketId}:${resolution}`, 15000, 600000, async () => {
         let toNs = BigInt(Date.now()) * 1000000n;
         try {
           const latestTrade = await fetchJson(`${RISEX_API}/v1/markets/id/${marketId}/trade-history?limit=1`);
@@ -2133,11 +2170,11 @@ async function startServer() {
     res.json({ series, fetchedAt: Date.now(), source: 'RISEx 1H OHLCV' });
   });
 
-  // 8. Orderbook (2s cached)
+  // 8. Orderbook (2s fresh / 60s SWR cached)
   app.get('/api/markets/:marketId/orderbook', async (req: Request, res: Response) => {
     try {
       const marketId = String(req.params.marketId);
-      const payload = await cachedCall(`ob:${marketId}`, 2000, async () => {
+      const payload = await cachedCallSWR(`ob:${marketId}`, 2000, 60000, async () => {
         const ob = await fetchJson(`${RISEX_API}/v1/orderbook?market_id=${marketId}`);
         const bids = (ob?.data?.bids || []).map((b: any) => ({ price: b.price, size: b.quantity }));
         const asks = (ob?.data?.asks || []).map((a: any) => ({ price: a.price, size: a.quantity }));
@@ -2149,12 +2186,12 @@ async function startServer() {
     }
   });
 
-  // 9. Market Trades (3s cached)
+  // 9. Market Trades (3s fresh / 2m SWR cached)
   app.get('/api/markets/:marketId/trades', async (req: Request, res: Response) => {
     try {
       const marketId = String(req.params.marketId);
       const limit = Math.min(Number(req.query.limit || 60), 200);
-      const payload = await cachedCall(`mtrades:${marketId}:${limit}`, 3000, async () => {
+      const payload = await cachedCallSWR(`mtrades:${marketId}:${limit}`, 3000, 120000, async () => {
         const json = await fetchJson(`${RISEX_API}/v1/markets/id/${marketId}/trade-history?limit=${limit}`);
         return { trades: json?.data?.trades || [] };
       });
@@ -2164,11 +2201,11 @@ async function startServer() {
     }
   });
 
-  // 10. Market Funding History (30s cached)
+  // 10. Market Funding History (30s fresh / 10m SWR cached)
   app.get('/api/markets/:marketId/funding', async (req: Request, res: Response) => {
     try {
       const marketId = String(req.params.marketId);
-      const payload = await cachedCall(`mfunding:${marketId}`, 30000, async () => {
+      const payload = await cachedCallSWR(`mfunding:${marketId}`, 30000, 600000, async () => {
         const json = await fetchJson(`${RISEX_API}/v1/markets/id/${marketId}/funding-rate-history?limit=48`);
         return { records: json?.data?.records || [] };
       });
@@ -2207,7 +2244,7 @@ async function startServer() {
       customSearchedWallets.add(address);
 
       if (isLite) {
-        const litePayload = await cachedCall(`wallet:lite:${address.toLowerCase()}`, 20000, async () => {
+        const litePayload = await cachedCallSWR(`wallet:lite:${address.toLowerCase()}`, 20000, 120000, async () => {
           const [profileRes, detailsRes, statsAllRes] = await Promise.allSettled([
             traderProfile ? Promise.resolve({ data: traderProfile }) : fetchJson(`${RISEX_API}/v1/traders/${address}`),
             fetchJson(`${RISEX_API}/v1/portfolio/details?account=${address}`),
@@ -2295,7 +2332,7 @@ async function startServer() {
           marketsListRes,
         ] = await Promise.allSettled([
           traderProfile ? Promise.resolve({ data: traderProfile }) : fetchJson(`${RISEX_API}/v1/traders/${address}`),
-          fetchJson(`${RISEX_API}/v1/portfolio/details?account=${address}`, {}, 10000, 2),
+          fetchJson(`${RISEX_API}/v1/portfolio/details?account=${address}`, {}, 12000, 3),
           fetchJson(`${RISEX_API}/v1/portfolio/header?account=${address}`, {}, 10000, 2),
           fetchJson(`${RISEX_API}/v1/portfolio/stats?account=${address}&period=7d`),
           fetchJson(`${RISEX_API}/v1/portfolio/stats?account=${address}&period=30d`),
@@ -2329,7 +2366,35 @@ async function startServer() {
           enrichWallet(address, 'user-search').catch(() => {});
         }
 
-      const details = detailsRes.status === 'fulfilled' ? detailsRes.value?.data : null;
+      const liveDetails = detailsRes.status === 'fulfilled' ? detailsRes.value?.data : null;
+      const details = liveDetails || (existingCached
+        ? {
+            account: existingCached.address,
+            summary: {
+              total_account_value: String(existingCached.accountValue),
+              usdc_balance: String(existingCached.usdcBalance),
+              total_notional: String(existingCached.totalNotional),
+              account_leverage: String(existingCached.accountLeverage),
+              margin_usage: String(existingCached.marginUsagePct / 100),
+              total_unrealized_pnl: String(existingCached.unrealizedPnl),
+              realized_pnl: String(existingCached.realizedPnlAll),
+              risk_level: existingCached.riskLevel || 'NORMAL',
+              in_liquidation: existingCached.inLiquidation || false,
+            },
+            positions: (existingCached.positions || []).map((p) => ({
+              market_id: p.marketId,
+              market_name: p.marketName,
+              size: p.side === 'SHORT' ? String(-Math.abs(p.size)) : String(Math.abs(p.size)),
+              mark_price: String(p.markPrice),
+              avg_entry_price: String(p.entryPrice),
+              liquidation_price: String(p.liquidationPrice),
+              leverage: String(p.leverage),
+              unrealized_pnl: String(p.unrealizedPnl),
+              margin_balance: String(p.marginBalance),
+              margin_mode: p.marginMode === 'Isolated' ? 1 : 0,
+            })),
+          }
+        : null);
       if (!details) {
         throw new Error('RISEx API temporarily rate-limited while fetching wallet summary. Please retry.');
       }

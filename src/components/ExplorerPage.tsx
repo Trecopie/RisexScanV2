@@ -228,10 +228,10 @@ export const ExplorerPage: React.FC<{
             RISEx On-Chain Block &amp; Risk Explorer
           </h1>
           <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-mono text-slate-500 dark:text-slate-400" aria-live="polite">
-            <span className={connectionState === 'connected' ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-amber-600 dark:text-[#ffb02e]'}>
+            <span className={connectionState === 'connected' ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-sky-600 dark:text-sky-400'}>
               {connectionState === 'connected' ? '● Market trades live via WebSocket' : '○ Market stream reconnecting'}
             </span>
-            {displayedHead !== null && <span className={tipFresh ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-amber-600 dark:text-[#ffb02e]'}>
+            {displayedHead !== null && <span className={tipFresh ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-sky-600 dark:text-sky-400'}>
               · {tipFresh ? '● Live RPC' : '○ Last RPC'} block #{displayedHead.toLocaleString()}
             </span>}
             {blockLag !== null && <span className="text-slate-500 dark:text-slate-400">
@@ -306,7 +306,7 @@ export const ExplorerPage: React.FC<{
                   </div>
                 </div>
                 {!blocksAvailable && (
-                  <div className="mb-2 text-[11px] text-amber-600 dark:text-[#ffb02e]">Block explorer is temporarily unavailable; showing the last successful snapshot.</div>
+                  <div className="mb-2 text-[11px] text-indigo-600 dark:text-indigo-400">Block explorer is temporarily unavailable; showing the last successful snapshot.</div>
                 )}
                 <div className="min-h-0 flex-1 max-h-[460px] overflow-x-auto overflow-y-auto">
                   <table className="w-full text-left text-xs font-mono tabular-nums">
@@ -376,14 +376,14 @@ export const ExplorerPage: React.FC<{
                       return (
                         <div key={method} className="space-y-1">
                           <div className="flex items-center justify-between font-mono text-[11px]">
-                            <span className="text-amber-600 dark:text-[#ffb02e] truncate max-w-[200px]">{method}</span>
+                            <span className="text-sky-600 dark:text-sky-400 truncate max-w-[200px]">{method}</span>
                             <span className="text-slate-700 dark:text-slate-300 tabular-nums">
                               {count} txs · {pct.toFixed(0)}%
                             </span>
                           </div>
                           <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
                             <div
-                              className="h-full rounded-full bg-gradient-to-r from-amber-500 to-emerald-500 dark:from-[#ffb02e] dark:to-[#22e0a1]"
+                              className="h-full rounded-full bg-gradient-to-r from-sky-500 to-teal-500 dark:from-sky-400 dark:to-[#22e0a1]"
                               style={{ width: `${Math.max(4, pct)}%` }}
                             />
                           </div>
@@ -451,12 +451,12 @@ export const ExplorerPage: React.FC<{
                             {shortAddress(tx.hash, 8, 6)}
                           </button>
                         </td>
-                        <td className="py-2 px-2 text-amber-600 dark:text-[#ffb02e] whitespace-nowrap">{formatExplorerMethod(tx)}</td>
+                        <td className="py-2 px-2 text-sky-600 dark:text-sky-400 whitespace-nowrap">{formatExplorerMethod(tx)}</td>
                         <td className="py-2 px-2">
                           <button
                             type="button"
                             onClick={() => tx.from?.hash && onSelectWallet(tx.from.hash)}
-                            className="text-slate-700 hover:text-amber-600 dark:text-slate-300 dark:hover:text-[#ffb02e]"
+                            className="text-slate-700 hover:text-sky-600 dark:text-slate-300 dark:hover:text-sky-400"
                           >
                             {shortAddress(tx.from?.hash || '')}
                           </button>
@@ -528,7 +528,7 @@ export const ExplorerPage: React.FC<{
                       </td>
                       <td className="py-2 px-2 text-right text-slate-800 dark:text-slate-200">{formatPrice(tr.price)}</td>
                       <td className="py-2 px-2 text-right text-slate-700 dark:text-slate-300">{formatNumber(tr.size, 4)}</td>
-                      <td className="py-2 px-2 text-right text-amber-600 dark:text-[#ffb02e]">{formatUsd(usd, true)}</td>
+                      <td className="py-2 px-2 text-right text-sky-600 dark:text-sky-400">{formatUsd(usd, true)}</td>
                       <td className="py-2 pl-2 text-right text-slate-500">#{tr.block_number || '—'}</td>
                     </tr>
                   );
@@ -601,7 +601,7 @@ export const ExplorerPage: React.FC<{
                           e.stopPropagation();
                           onSelectMarket(p.marketId);
                         }}
-                        className="py-2.5 px-2 font-semibold text-amber-600 hover:underline dark:text-[#ffb02e]"
+                        className="py-2.5 px-2 font-semibold text-sky-600 hover:underline dark:text-sky-400"
                       >
                         {p.marketName}
                       </td>
@@ -639,7 +639,7 @@ export const ExplorerPage: React.FC<{
       {subTab === 'funding' && (
         <div className="sunrise-card overflow-hidden rounded-2xl p-4">
           <div className="mb-3 flex items-center gap-2">
-            <Percent className="h-4 w-4 text-amber-600 dark:text-[#ffb02e]" />
+            <Percent className="h-4 w-4 text-sky-600 dark:text-sky-400" />
             <h2 className="font-display text-base font-bold text-slate-900 dark:text-[#e8edfb]">
               Live Funding Rates &amp; Annualized Yield ({sortedFundingMarkets.length} Markets)
             </h2>
@@ -686,7 +686,7 @@ export const ExplorerPage: React.FC<{
                         {apr >= 0 ? '+' : ''}
                         {apr.toFixed(1)}%
                       </td>
-                      <td className="py-2.5 px-2 text-right text-amber-600 dark:text-[#ffb02e]">
+                      <td className="py-2.5 px-2 text-right text-sky-600 dark:text-sky-400">
                         {formatUsd(Number(m.open_interest || 0) * mark, true)}
                       </td>
                       <td className="py-2.5 pl-2 text-right text-slate-700 dark:text-slate-300">
@@ -729,7 +729,7 @@ export const ExplorerPage: React.FC<{
                   value={txInput}
                   onChange={(e) => setTxInput(e.target.value)}
                   placeholder="Paste 0x transaction hash (64 hex chars)…"
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-xs font-mono text-slate-900 placeholder:text-slate-400 focus:border-amber-500 focus:bg-white focus:outline-none dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-[#e8edfb] dark:placeholder:text-slate-500 dark:focus:border-[#ffb02e]"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-xs font-mono text-slate-900 placeholder:text-slate-400 focus:border-sky-500 focus:bg-white focus:outline-none dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-[#e8edfb] dark:placeholder:text-slate-500 dark:focus:border-sky-400"
                 />
               </div>
               <button type="submit" className="sunrise-gradient-btn rounded-xl px-5 py-2 text-xs font-semibold">
@@ -738,7 +738,7 @@ export const ExplorerPage: React.FC<{
             </form>
 
             {txLoading && (
-              <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-[#ffb02e]">
+              <div className="flex items-center gap-2 text-xs text-sky-600 dark:text-sky-400">
                 <Loader2 className="h-4 w-4 animate-spin" /> Fetching RISEx &amp; Blockscout trace…
               </div>
             )}
@@ -779,7 +779,7 @@ export const ExplorerPage: React.FC<{
                     </div>
                     <div className="rounded-lg border border-slate-200 bg-white p-2.5 dark:border-slate-800/80 dark:bg-[#05070d]">
                       <div className="text-[10px] uppercase text-slate-500">Method</div>
-                      <div className="mt-0.5 text-amber-600 dark:text-[#ffb02e] truncate">
+                      <div className="mt-0.5 text-sky-600 dark:text-sky-400 truncate">
                         {txResult.explorerTx.method || txResult.decoded?.action || 'call'}
                       </div>
                     </div>

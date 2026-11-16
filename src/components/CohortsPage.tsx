@@ -220,7 +220,7 @@ export const CohortsPage: React.FC<{
               e.stopPropagation();
               onSelectMarket(p.marketId);
             }}
-            className="font-semibold text-slate-900 dark:text-[#e8edfb] hover:text-amber-600 dark:hover:text-[#ffb02e]"
+            className="font-semibold text-slate-900 dark:text-[#e8edfb] hover:text-sky-600 dark:hover:text-sky-400"
           >
             {p.marketName}
           </button>
@@ -240,7 +240,7 @@ export const CohortsPage: React.FC<{
           {p.liquidationPrice > 0 ? formatPrice(p.liquidationPrice) : '—'}
         </td>
         {showLiqDist && (
-          <td className="py-2.5 px-2 text-right font-mono font-semibold text-amber-600 dark:text-[#ffb02e]">
+          <td className="py-2.5 px-2 text-right font-mono font-semibold text-orange-600 dark:text-orange-400">
             {p.distanceToLiqPct !== null ? `${p.distanceToLiqPct.toFixed(2)}%` : '—'}
           </td>
         )}
@@ -259,7 +259,7 @@ export const CohortsPage: React.FC<{
               onPeekTrader(p.address);
             }}
             aria-label={`Quick peek ${info.displayName}`}
-            className="rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#070b14] p-1 text-slate-500 dark:text-slate-400 hover:border-amber-500/60 dark:hover:border-[#ffb02e]/60 hover:text-amber-600 dark:hover:text-[#ffb02e]"
+            className="rounded border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#070b14] p-1 text-slate-500 dark:text-slate-400 hover:border-sky-500/60 dark:hover:border-sky-400/60 hover:text-sky-600 dark:hover:text-sky-400"
           >
             <Eye className="h-3.5 w-3.5" />
           </button>
@@ -273,7 +273,7 @@ export const CohortsPage: React.FC<{
       {/* Page Header & View Switcher */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between border-b border-slate-200 dark:border-slate-800/80 pb-4">
         <div>
-          <div className="text-[11px] font-mono uppercase tracking-wider text-amber-600 dark:text-[#ffb02e]">
+          <div className="text-[11px] font-mono uppercase tracking-wider text-sky-600 dark:text-sky-400">
             COHORT TRACKER · POSITIONING &amp; FUNDING RADAR
           </div>
           <h1 className="mt-0.5 font-display text-2xl font-bold text-slate-900 dark:text-[#e8edfb]">
@@ -361,9 +361,9 @@ export const CohortsPage: React.FC<{
           </div>
         </div>
 
-        <div className="sunrise-card rounded-xl border-t-2 border-t-amber-500/70 dark:border-t-[#ffb02e]/60 p-3.5">
+        <div className="sunrise-card rounded-xl border-t-2 border-t-sky-500/70 dark:border-t-sky-400/60 p-3.5">
           <div className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Exchange Open Interest</div>
-          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-amber-600 dark:text-[#ffb02e]">
+          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-sky-600 dark:text-sky-400">
             {data ? formatUsd(data.summary.totalMarketOiUsd, true) : '—'}
           </div>
           <div className="mt-0.5 font-mono text-[10px] text-slate-500">All active RISEx markets</div>
@@ -380,7 +380,7 @@ export const CohortsPage: React.FC<{
 
       {loading && !data ? (
         <div className="sunrise-card flex items-center justify-center rounded-xl py-16 text-xs text-slate-500 dark:text-slate-400">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin text-amber-600 dark:text-[#ffb02e]" />
+          <Loader2 className="mr-2 h-4 w-4 animate-spin text-sky-600 dark:text-sky-400" />
           Aggregating live wallet cohorts &amp; open positions…
         </div>
       ) : null}
@@ -437,7 +437,7 @@ export const CohortsPage: React.FC<{
                       <td className="py-3 px-2 text-right font-mono text-slate-800 dark:text-slate-200">
                         {formatUsd(c.totalEquity, true)}
                       </td>
-                      <td className="py-3 px-2 text-right font-mono text-amber-600 dark:text-[#ffb02e]">
+                      <td className="py-3 px-2 text-right font-mono text-sky-600 dark:text-sky-400">
                         {formatUsd(c.totalNotional, true)}
                       </td>
                       <td className="py-3 px-3">
@@ -552,7 +552,7 @@ export const CohortsPage: React.FC<{
                 value={marketSearch}
                 onChange={(e) => setMarketSearch(e.target.value)}
                 placeholder="Filter pair (e.g. BTC, ETH)…"
-                className="w-full rounded-lg border border-slate-300 dark:border-slate-700/70 bg-white dark:bg-[#070b14] py-1.5 pl-8 pr-3 text-xs text-slate-900 dark:text-[#e8edfb] placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-amber-500 dark:focus:border-[#ffb02e] focus:outline-none"
+                className="w-full rounded-lg border border-slate-300 dark:border-slate-700/70 bg-white dark:bg-[#070b14] py-1.5 pl-8 pr-3 text-xs text-slate-900 dark:text-[#e8edfb] placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-sky-500 dark:focus:border-sky-400 focus:outline-none"
               />
             </div>
           </div>
@@ -564,25 +564,25 @@ export const CohortsPage: React.FC<{
                   <th className="py-2.5 pl-4 pr-2">Market</th>
                   <th className="py-2.5 px-2 text-right">Mark</th>
                   <th
-                    className="py-2.5 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]"
+                    className="py-2.5 px-2 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400"
                     onClick={() => toggleMatrixSort('openInterestUsd')}
                   >
                     Open Interest
                   </th>
                   <th
-                    className="py-2.5 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]"
+                    className="py-2.5 px-2 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400"
                     onClick={() => toggleMatrixSort('volume24h')}
                   >
                     24h Vol
                   </th>
                   <th
-                    className="py-2.5 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]"
+                    className="py-2.5 px-2 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400"
                     onClick={() => toggleMatrixSort('fundingAprPct')}
                   >
                     Funding (APR)
                   </th>
                   <th
-                    className="py-2.5 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]"
+                    className="py-2.5 px-2 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400"
                     onClick={() => toggleMatrixSort('whaleBiasPct')}
                   >
                     Whale/Shark Bias
@@ -590,7 +590,7 @@ export const CohortsPage: React.FC<{
                   <th className="py-2.5 px-2 text-right">Dolphin Bias</th>
                   <th className="py-2.5 px-2 text-right">Fish/Shrimp Bias</th>
                   <th
-                    className="py-2.5 pl-2 pr-4 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]"
+                    className="py-2.5 pl-2 pr-4 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400"
                     onClick={() => toggleMatrixSort('divergencePct')}
                   >
                     Divergence
@@ -622,7 +622,7 @@ export const CohortsPage: React.FC<{
                       <td className="py-2.5 px-2 text-right font-mono text-slate-800 dark:text-slate-200">
                         {formatPrice(m.markPrice)}
                       </td>
-                      <td className="py-2.5 px-2 text-right font-mono text-amber-600 dark:text-[#ffb02e]">
+                      <td className="py-2.5 px-2 text-right font-mono text-sky-600 dark:text-sky-400">
                         {formatUsd(m.openInterestUsd, true)}
                       </td>
                       <td className="py-2.5 px-2 text-right font-mono text-slate-600 dark:text-slate-300">
@@ -649,7 +649,7 @@ export const CohortsPage: React.FC<{
                         {divActive ? (
                           <span
                             className={`font-semibold ${
-                              Math.abs(m.divergencePct) >= 50 ? 'text-amber-600 dark:text-[#ffb02e]' : 'text-slate-600 dark:text-slate-300'
+                              Math.abs(m.divergencePct) >= 50 ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-600 dark:text-slate-300'
                             }`}
                           >
                             {m.divergencePct >= 0 ? '+' : ''}
@@ -689,7 +689,7 @@ export const CohortsPage: React.FC<{
                   onClick={() => setTierFilter(t.id)}
                   className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
                     tierFilter === t.id
-                      ? 'bg-amber-500/15 dark:bg-[#ffb02e]/18 text-amber-700 dark:text-[#ffb02e] border border-amber-500/45 dark:border-[#ffb02e]/45'
+                      ? 'bg-sky-500/15 dark:bg-sky-400/18 text-sky-700 dark:text-sky-300 border border-sky-500/45 dark:border-sky-400/45'
                       : 'border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#070b14] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
@@ -726,7 +726,7 @@ export const CohortsPage: React.FC<{
                   value={posSearch}
                   onChange={(e) => setPosSearch(e.target.value)}
                   placeholder="Market, trader, 0x…"
-                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700/70 bg-white dark:bg-[#070b14] py-1.5 pl-8 pr-2.5 text-xs text-slate-900 dark:text-[#e8edfb] placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-amber-500 dark:focus:border-[#ffb02e] focus:outline-none"
+                  className="w-full rounded-lg border border-slate-300 dark:border-slate-700/70 bg-white dark:bg-[#070b14] py-1.5 pl-8 pr-2.5 text-xs text-slate-900 dark:text-[#e8edfb] placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-sky-500 dark:focus:border-sky-400 focus:outline-none"
                 />
               </div>
             </div>
@@ -838,7 +838,7 @@ export const CohortsPage: React.FC<{
           <div className="sunrise-card overflow-hidden rounded-xl">
             <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800/80 px-4 py-3">
               <div className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-[#ffb02e]" />
+                <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                 <h3 className="font-display text-base font-bold text-slate-900 dark:text-[#e8edfb]">
                   Near-Liquidation Watchlist (&lt;5% Distance)
                 </h3>

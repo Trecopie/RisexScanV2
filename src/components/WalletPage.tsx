@@ -369,7 +369,7 @@ export const WalletPage: React.FC<{
               value={lookupInput}
               onChange={(e) => setLookupInput(e.target.value)}
               placeholder="Enter 0x wallet address OR RISEx username (e.g. RISEx Vault, yeff, Bits)…"
-              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-xs font-mono text-slate-900 placeholder:text-slate-400 focus:border-amber-500 focus:outline-none dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-[#e8edfb] dark:placeholder:text-slate-500 dark:focus:border-[#ffb02e]"
+              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-xs font-mono text-slate-900 placeholder:text-slate-400 focus:border-sky-500 focus:outline-none dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-[#e8edfb] dark:placeholder:text-slate-500 dark:focus:border-sky-400"
             />
           </div>
           <button
@@ -394,7 +394,7 @@ export const WalletPage: React.FC<{
                     setActiveQuery(t.address);
                     onSelectWallet(t.address);
                   }}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-mono text-slate-700 hover:border-amber-500/50 hover:text-amber-700 dark:border-slate-800 dark:bg-[#090e1a] dark:text-slate-300 dark:hover:border-[#ffb02e]/50 dark:hover:text-[#ffb02e] transition-colors"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-mono text-slate-700 hover:border-sky-500/50 hover:text-sky-700 dark:border-slate-800 dark:bg-[#090e1a] dark:text-slate-300 dark:hover:border-sky-400/50 dark:hover:text-sky-300 transition-colors"
                 >
                   <TraderAvatar address={t.address} avatarUrl={t.avatarUrl} username={info.displayName} size={16} />
                   <span>{info.displayName}</span>
@@ -407,13 +407,13 @@ export const WalletPage: React.FC<{
 
       {loading && !data && (
         <div className="sunrise-card flex flex-col items-center justify-center rounded-2xl py-16 text-slate-500 dark:text-slate-400">
-          <Loader2 className="mb-3 h-7 w-7 animate-spin text-amber-500 dark:text-[#ffb02e]" />
+          <Loader2 className="mb-3 h-7 w-7 animate-spin text-sky-500 dark:text-sky-400" />
           <div className="text-sm font-medium text-slate-900 dark:text-[#e8edfb]">Loading RISEx trader profile…</div>
         </div>
       )}
 
       {loading && data && (
-        <div className="flex items-center justify-between rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs font-mono text-amber-700 dark:border-[#ffb02e]/30 dark:bg-[#ffb02e]/10 dark:text-[#ffb02e]">
+        <div className="flex items-center justify-between rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-2 text-xs font-mono text-sky-700 dark:border-sky-400/30 dark:bg-sky-400/10 dark:text-sky-300">
           <span className="inline-flex items-center gap-2">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
             Fetching {activeQuery} performance &amp; funding history…
@@ -466,14 +466,14 @@ export const WalletPage: React.FC<{
                       </span>
                     )}
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400">
-                    <span>{data.address}</span>
+                  <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2 text-xs font-mono text-slate-500 dark:text-slate-400">
+                    <span className="break-all">{data.address}</span>
                     <CopyBtn text={data.address} />
                     <a
                       href={`https://explorer.risechain.com/address/${data.address}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-amber-600 dark:text-[#ffb02e] hover:underline"
+                      className="inline-flex items-center gap-1 text-sky-600 dark:text-sky-400 hover:underline"
                     >
                       Blockscout <ExternalLink className="h-3 w-3" />
                     </a>
@@ -483,7 +483,7 @@ export const WalletPage: React.FC<{
 
               <div className="flex flex-wrap items-center gap-2">
                 {Number(data.profile?.best_rank) > 0 && (
-                  <div className="rounded-xl border border-amber-500/35 bg-amber-500/10 px-3 py-1.5 text-xs font-mono text-amber-700 dark:border-[#ffb02e]/35 dark:bg-[#ffb02e]/10 dark:text-[#ffb02e]">
+                  <div className="rounded-xl border border-indigo-500/35 bg-indigo-500/10 px-3 py-1.5 text-xs font-mono text-indigo-700 dark:border-indigo-400/35 dark:bg-indigo-400/10 dark:text-indigo-300">
                     <Award className="mr-1 inline h-3.5 w-3.5" />
                     Best Comp Rank #{data.profile!.best_rank}
                   </div>
@@ -537,7 +537,7 @@ export const WalletPage: React.FC<{
               </div>
               <div className="rounded-xl border border-slate-200/80 bg-slate-50/90 p-3 dark:border-slate-800/80 dark:bg-[#090e1a]">
                 <div className="text-[11px] uppercase text-slate-500 dark:text-slate-400">Acct Leverage / Margin</div>
-                <div className="mt-1 font-mono text-base font-semibold tabular-nums text-amber-600 dark:text-[#ffb02e]">
+                <div className="mt-1 font-mono text-base font-semibold tabular-nums text-sky-600 dark:text-sky-400">
                   {Number(summary?.account_leverage || 0).toFixed(2)}x ·{' '}
                   {(Number(summary?.margin_usage || 0) * 100).toFixed(1)}%
                 </div>
@@ -560,7 +560,7 @@ export const WalletPage: React.FC<{
                       {card.title}
                     </span>
                     {rank > 0 && (
-                      <span className="rounded bg-amber-500/12 px-1.5 py-0.5 text-[10px] font-mono text-amber-700 dark:bg-[#ffb02e]/15 dark:text-[#ffb02e]">
+                      <span className="rounded bg-indigo-500/12 px-1.5 py-0.5 text-[10px] font-mono text-indigo-700 dark:bg-indigo-400/15 dark:text-indigo-300">
                         Rank #{rank.toLocaleString()}
                       </span>
                     )}
@@ -596,7 +596,7 @@ export const WalletPage: React.FC<{
           <div className="sunrise-card rounded-2xl p-5 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-amber-600 dark:text-[#ffb02e]" />
+                <TrendingUp className="h-4 w-4 text-sky-600 dark:text-sky-400" />
                 <h2 className="font-display text-base font-bold text-slate-900 dark:text-[#e8edfb]">
                   PnL & Account Equity History
                 </h2>
@@ -638,7 +638,7 @@ export const WalletPage: React.FC<{
             <div className="sunrise-card rounded-2xl p-4 lg:col-span-7 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-amber-600 dark:text-[#ffb02e]" />
+                  <Calendar className="h-4 w-4 text-sky-600 dark:text-sky-400" />
                   <h2 className="font-display text-base font-bold text-slate-900 dark:text-[#e8edfb]">
                     Daily PnL Calendar
                   </h2>
@@ -704,7 +704,7 @@ export const WalletPage: React.FC<{
                           ? Number(data.statsByPeriod['30d'].performance.profit_factor).toFixed(2)
                           : '—'}
                       </td>
-                      <td className="py-2.5 pl-2 text-right text-amber-600 dark:text-[#ffb02e]">
+                      <td className="py-2.5 pl-2 text-right text-sky-600 dark:text-sky-400">
                         {data.statsByPeriod?.['all']?.performance?.profit_factor
                           ? Number(data.statsByPeriod['all'].performance.profit_factor).toFixed(2)
                           : '—'}
@@ -785,7 +785,7 @@ export const WalletPage: React.FC<{
                         key={h.slug}
                         className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-700 dark:border-slate-800 dark:bg-[#090e1a] dark:text-slate-300"
                       >
-                        {h.name} · <strong className="font-mono text-amber-600 dark:text-[#ffb02e]">#{h.rank}</strong>
+                        {h.name} · <strong className="font-mono text-sky-600 dark:text-sky-400">#{h.rank}</strong>
                       </span>
                     ))}
                   </div>
@@ -828,7 +828,7 @@ export const WalletPage: React.FC<{
           {activeTab === 'positions' && (
             <div className="sunrise-card overflow-hidden rounded-2xl">
               {(data.realizedDataAvailable === false || data.tradeHistoryAvailable === false) && (
-                <div className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-700 dark:border-[#ffb02e]/30 dark:bg-[#ffb02e]/10 dark:text-[#ffb02e]">
+                <div className="border-b border-sky-500/30 bg-sky-500/10 px-4 py-2 text-xs text-sky-700 dark:border-sky-400/30 dark:bg-sky-400/10 dark:text-sky-300">
                   The historical realized-PnL or fills endpoint is temporarily unavailable; open-position partial realized PnL cannot be verified. Unrealized PnL still comes from the live portfolio.
                 </div>
               )}
@@ -947,7 +947,7 @@ export const WalletPage: React.FC<{
                       type="button"
                       onClick={() => { setRzViewMode('market'); setRzMarketFilter('ALL'); setRzShowAll(false); }}
                       aria-pressed={rzViewMode === 'market'}
-                      className={`rounded-lg px-2.5 py-1 text-xs font-mono transition-colors ${rzViewMode === 'market' ? 'bg-amber-500 font-semibold text-white dark:bg-[#ffb02e] dark:text-[#1f0e03]' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-[#e8edfb]'}`}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-mono transition-colors ${rzViewMode === 'market' ? 'sunrise-gradient-btn font-semibold' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-[#e8edfb]'}`}
                     >
                       Market PnL Summary
                     </button>
@@ -960,7 +960,7 @@ export const WalletPage: React.FC<{
                       }}
                       className={`rounded-lg px-2.5 py-1 text-xs font-mono transition-colors ${
                         rzViewMode === 'cycles'
-                          ? 'bg-amber-500 font-semibold text-white dark:bg-[#ffb02e] dark:text-[#1f0e03]'
+                          ? 'sunrise-gradient-btn font-semibold'
                           : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-[#e8edfb]'
                       }`}
                     >
@@ -990,7 +990,7 @@ export const WalletPage: React.FC<{
                         type="button"
                         onClick={() => setRzTimeframe(tf)}
                         className={`rounded-lg px-2.5 py-1 text-xs font-mono uppercase ${
-                          rzTimeframe === tf ? 'bg-amber-500 font-semibold text-white dark:bg-[#ffb02e] dark:text-[#1f0e03]' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400'
+                          rzTimeframe === tf ? 'sunrise-gradient-btn font-semibold' : 'text-slate-600 hover:text-slate-900 dark:text-slate-400'
                         }`}
                       >
                         {tf}
@@ -1050,7 +1050,7 @@ export const WalletPage: React.FC<{
               </div>
 
               {(data.realizedDataAvailable === false || data.tradeHistoryAvailable === false) && (
-                <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-xs text-amber-700 dark:border-[#ffb02e]/40 dark:bg-[#ffb02e]/10 dark:text-[#ffb02e]">
+                <div className="rounded-xl border border-sky-500/40 bg-sky-500/10 px-4 py-3 text-xs text-sky-700 dark:border-sky-400/40 dark:bg-sky-400/10 dark:text-sky-300">
                   RISEx historical data is temporarily unavailable. Please retry the profile later; a zero or blank aggregate here does not mean the account has no realized PnL.
                 </div>
               )}
@@ -1061,13 +1061,13 @@ export const WalletPage: React.FC<{
                     ? 'Verified Trades reconstructs full 0→0 position cycles from available fills and credits their matched realized PnL at final close. High-frequency or older fills may be missing; this view is not an all-time total.'
                     : 'Partial Closes shows individual official RISEx realized-PnL events, including trims of still-open positions. Do not add these totals to Market PnL Summary.'}
                 {rzViewMode === 'market' && data.realizedEventsCapped && (
-                  <div className="mt-2 text-amber-700 dark:text-[#ffb02e]">
+                  <div className="mt-2 text-sky-700 dark:text-sky-300">
                     Showing the latest 10,000 available settlement events, not a complete all-time history. The official RISEx account total in the profile header may include older events.
                   </div>
                 )}
                 {rzViewMode === 'cycles' &&
                   (data.tradesCapped || data.realizedEventsCapped || (data.unverifiedCyclesCount || 0) > 0 || (data.unattributedRealizedEvents || 0) > 0) && (
-                    <div className="mt-2 text-amber-700 dark:text-[#ffb02e]">
+                    <div className="mt-2 text-sky-700 dark:text-sky-300">
                       Verified Trades covers only reconstructed history. {data.tradesCapped ? 'Recent trade fills are capped. ' : ''}
                       {data.realizedEventsCapped ? 'Settlement history is capped. ' : ''}
                       {(data.unverifiedCyclesCount || 0) > 0 ? `${data.unverifiedCyclesCount} reconstructed cycles lack complete settlement coverage. ` : ''}
@@ -1119,7 +1119,7 @@ export const WalletPage: React.FC<{
                 </div>
                 <div className="sunrise-card rounded-xl p-3.5">
                   <div className="text-[11px] uppercase text-slate-500 dark:text-slate-400">{rzViewMode === 'market' ? 'Group Win Rate & PF' : 'Win Rate & PF'}</div>
-                  <div className="mt-1 font-mono text-base font-bold tabular-nums text-amber-600 dark:text-[#ffb02e]">
+                  <div className="mt-1 font-mono text-base font-bold tabular-nums text-sky-600 dark:text-sky-400">
                     {realizedStats.winRate.toFixed(1)}% ·{' '}
                     {realizedStats.profitFactor === Infinity
                       ? '∞'
@@ -1154,7 +1154,7 @@ export const WalletPage: React.FC<{
                       <tr>
                         <th
                           onClick={() => toggleRzSort('time')}
-                          className="cursor-pointer py-3 pl-4 pr-2 hover:text-amber-600 dark:hover:text-[#ffb02e]"
+                          className="cursor-pointer py-3 pl-4 pr-2 hover:text-sky-600 dark:hover:text-sky-400"
                         >
                           <span className="inline-flex items-center gap-1">
                             {rzViewMode === 'market' ? 'Latest Settlement' : 'Closed Time'} <ArrowDownUp className="h-3 w-3" />
@@ -1164,7 +1164,7 @@ export const WalletPage: React.FC<{
                         <th className="py-3 px-2">Side</th>
                         <th
                           onClick={() => toggleRzSort('size')}
-                          className="cursor-pointer py-3 px-2 text-right hover:text-amber-600 dark:hover:text-[#ffb02e]"
+                          className="cursor-pointer py-3 px-2 text-right hover:text-sky-600 dark:hover:text-sky-400"
                         >
                           <span className="inline-flex items-center gap-1">
                             Size <ArrowDownUp className="h-3 w-3" />
@@ -1174,7 +1174,7 @@ export const WalletPage: React.FC<{
                         <th className="py-3 px-2 text-right">{rzViewMode === 'market' ? 'Exit (N/A)' : 'Exit'}</th>
                         <th
                           onClick={() => toggleRzSort('funding')}
-                          className="cursor-pointer py-3 px-2 text-right hover:text-amber-600 dark:hover:text-[#ffb02e]"
+                          className="cursor-pointer py-3 px-2 text-right hover:text-sky-600 dark:hover:text-sky-400"
                         >
                           <span className="inline-flex items-center gap-1">
                             Funding <ArrowDownUp className="h-3 w-3" />
@@ -1182,8 +1182,8 @@ export const WalletPage: React.FC<{
                         </th>
                         <th
                           onClick={() => toggleRzSort('pnl')}
-                          className={`cursor-pointer py-3 pl-2 pr-4 text-right hover:text-amber-600 dark:hover:text-[#ffb02e] ${
-                            rzSortBy === 'pnl' ? 'text-amber-600 dark:text-[#ffb02e]' : ''
+                          className={`cursor-pointer py-3 pl-2 pr-4 text-right hover:text-sky-600 dark:hover:text-sky-400 ${
+                            rzSortBy === 'pnl' ? 'text-sky-600 dark:text-sky-400' : ''
                           }`}
                         >
                           <span className="inline-flex items-center gap-1">
@@ -1266,7 +1266,7 @@ export const WalletPage: React.FC<{
                     <button
                       type="button"
                       onClick={() => setRzShowAll((v) => !v)}
-                      className="rounded-lg border border-slate-200 bg-white px-3 py-1 font-mono text-xs text-amber-600 hover:border-amber-500/60 dark:border-slate-700/70 dark:bg-[#0e1526] dark:text-[#ffb02e] dark:hover:border-[#ffb02e]/60"
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-1 font-mono text-xs text-sky-600 hover:border-sky-500/60 dark:border-slate-700/70 dark:bg-[#0e1526] dark:text-sky-400 dark:hover:border-sky-400/60"
                     >
                       {rzShowAll ? 'Collapse to 200' : `Show All ${sortedRealizedRows.length.toLocaleString()}`}
                     </button>
@@ -1302,7 +1302,7 @@ export const WalletPage: React.FC<{
                           <td className="py-2.5 pl-4 pr-2 text-slate-500 dark:text-slate-400">{formatDateTime(tr.time)}</td>
                           <td
                             onClick={() => onSelectMarket(String(tr.market_id))}
-                            className="cursor-pointer py-2.5 px-2 font-sans font-semibold text-slate-900 hover:text-amber-600 dark:text-[#e8edfb] dark:hover:text-[#ffb02e]"
+                            className="cursor-pointer py-2.5 px-2 font-sans font-semibold text-slate-900 hover:text-sky-600 dark:text-[#e8edfb] dark:hover:text-sky-300"
                           >
                             {marketNameById.get(String(tr.market_id)) || `MKT-${tr.market_id}`}
                           </td>
@@ -1502,7 +1502,7 @@ export const WalletPage: React.FC<{
                       <tr key={i}>
                         <td className="py-2 pr-2 text-slate-500 dark:text-slate-400">{formatDateTime(tr.block_time)}</td>
                         <td className="py-2 px-2 text-slate-800 dark:text-slate-200">{tr.type}</td>
-                        <td className="py-2 px-2 text-right text-amber-600 dark:text-[#ffb02e]">{formatUsd(tr.amount)}</td>
+                        <td className="py-2 px-2 text-right text-sky-600 dark:text-sky-400">{formatUsd(tr.amount)}</td>
                         <td className="py-2 px-2 text-right text-slate-500 dark:text-slate-400">#{tr.block_number}</td>
                         <td className="py-2 pl-2 text-right">
                           <button

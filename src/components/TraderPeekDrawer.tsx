@@ -148,7 +148,7 @@ export const TraderPeekDrawer: React.FC<{
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           {fetchError && !loading && (
-            <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-[#ffb02e]">
+            <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-700 dark:text-[#ff4d6d]">
               {fetchError}
             </div>
           )}
@@ -205,7 +205,7 @@ export const TraderPeekDrawer: React.FC<{
                 Open Positions ({loading && positions.length === 0 ? (seedTrader?.openPositionsCount ?? 0) : positions.length})
               </h4>
               {loading && (
-                <span className="inline-flex items-center gap-1 text-[11px] text-amber-600 dark:text-[#ffb02e]">
+                <span className="inline-flex items-center gap-1 text-[11px] text-sky-600 dark:text-sky-400">
                   <Loader2 className="h-3 w-3 animate-spin" /> Syncing live
                 </span>
               )}
@@ -224,7 +224,7 @@ export const TraderPeekDrawer: React.FC<{
                       onSelectMarket(pos.marketId);
                       onClose();
                     }}
-                    className="sunrise-card cursor-pointer rounded-xl p-3 hover:border-amber-500/50 dark:hover:border-[#ffb02e]/40 transition-colors"
+                    className="sunrise-card cursor-pointer rounded-xl p-3 hover:border-sky-500/50 dark:hover:border-sky-400/40 transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">

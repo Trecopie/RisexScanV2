@@ -1,27 +1,35 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowDownUp, BarChart3, Search } from 'lucide-react';
+import { ArrowDownUp, BarChart3, Flame, Search, Table2 } from 'lucide-react';
 import { useMarketStream } from '../context/MarketWebSocketContext';
 import type { MarketWithStats } from '../utils/marketWsPatch';
 import { calcMarketChangePct, formatPct, formatPrice, formatUsd } from '../utils/format';
+import { MarketHeatmap } from './MarketHeatmap';
 import { MarketMiniChart } from './MarketMiniChart';
 import { useMarketSparklines } from '../hooks/useMarketSparklines';
 import { TokenBadge } from './TraderAvatar';
 import { filterDirectoryMarkets, summarizeDirectoryMarkets } from '../utils/marketDirectory';
 
 type MarketSortKey = 'volume' | 'oi' | 'change' | 'funding' | 'price' | 'positions';
+type MarketsViewMode = 'screener' | 'heatmap';
 
 const CATEGORY_TITLES: Record<string, string> = {
   ALL: 'All Markets',
   CRYPTO: 'Crypto Markets',
   COMMODITY: 'Commodity Markets',
-  STOCKS: 'Stock Markets',
+  STOCKS: 'Equities Markets',
   INDEX_ETF: 'Index ETF Markets',
 };
+
+function formatCategoryLabel(cat: string): string {
+  if (cat === 'STOCKS') return 'EQUITIES';
+  return cat.replaceAll('_', ' ');
+}
 
 export const MarketsPage: React.FC<{
   onSelectMarket: (marketId: string) => void;
 }> = ({ onSelectMarket }) => {
   const { markets, loading, error, refreshSnapshot } = useMarketStream();
+  const [viewMode, setViewMode] = useState<MarketsViewMode>('screener');
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('ALL');
   const [includeInactive, setIncludeInactive] = useState(false);
@@ -84,27 +92,62 @@ export const MarketsPage: React.FC<{
   };
 
   return (
-    <div className="space-y-5">
+    <div className="min-w-0 space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="flex items-center gap-2 text-xs font-mono text-amber-600 dark:text-[#ffb02e]">
+          <div className="flex items-center gap-2 text-xs font-mono text-sky-600 dark:text-sky-400">
             <BarChart3 className="h-3.5 w-3.5" />
             RISEx PERPETUAL MARKETS ({loading && markets.length === 0 ? '—' : summary.marketCount})
           </div>
           <h1 className="mt-1 font-display text-2xl sm:text-3xl font-bold text-slate-900 dark:text-[#e8edfb]">
-            {activeHeading} & Live Positioning
+            {activeHeading} &amp; Live Positioning
           </h1>
         </div>
 
-        <div className="relative w-full sm:w-72">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Filter ticker (BTC, ETH, NVDA, XAU…)"
-            className="w-full rounded-xl border border-slate-300 dark:border-slate-700/60 bg-white dark:bg-[#090e1a] py-2 pl-9 pr-3 text-xs text-slate-900 dark:text-[#e8edfb] placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-amber-500 dark:focus:border-[#ffb02e] focus:outline-none"
-          />
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Screener / Heatmap Switcher */}
+          <div
+            role="group"
+            aria-label="Markets view mode"
+            data-testid="markets-view-toggle"
+            className="inline-flex items-center rounded-xl border border-slate-200 bg-slate-100/80 p-0.5 dark:border-slate-800 dark:bg-[#090e1a]"
+          >
+            <button
+              type="button"
+              onClick={() => setViewMode('screener')}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${
+                viewMode === 'screener'
+                  ? 'sunrise-gradient-btn shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-[#e8edfb]'
+              }`}
+            >
+              <Table2 className="h-3.5 w-3.5" />
+              Screener
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('heatmap')}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold whitespace-nowrap shrink-0 transition-all ${
+                viewMode === 'heatmap'
+                  ? 'sunrise-gradient-btn shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-[#e8edfb]'
+              }`}
+            >
+              <Flame className="h-3.5 w-3.5" />
+              Heatmap
+            </button>
+          </div>
+
+          <div className="relative w-full sm:w-64">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Filter ticker (BTC, ETH, NVDA, XAU…)"
+              className="w-full rounded-xl border border-slate-300 dark:border-slate-700/60 bg-white dark:bg-[#090e1a] py-2 pl-9 pr-3 text-xs text-slate-900 dark:text-[#e8edfb] placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-sky-500 dark:focus:border-sky-400 focus:outline-none"
+            />
+          </div>
         </div>
       </div>
 
@@ -121,7 +164,7 @@ export const MarketsPage: React.FC<{
                 : 'border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#090e1a] text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700 hover:text-slate-900 dark:hover:text-[#e8edfb]'
             }`}
           >
-            {cat}
+            {formatCategoryLabel(cat)}
           </button>
         ))}
         <label className="ml-auto inline-flex items-center gap-2 text-[11px] font-mono text-slate-600 dark:text-slate-400 cursor-pointer">
@@ -129,7 +172,7 @@ export const MarketsPage: React.FC<{
             type="checkbox"
             checked={includeInactive}
             onChange={(event) => setIncludeInactive(event.target.checked)}
-            className="accent-amber-600 dark:accent-[#ffb02e]"
+            className="accent-sky-600 dark:accent-sky-400"
           />
           Include inactive
         </label>
@@ -152,9 +195,9 @@ export const MarketsPage: React.FC<{
 
       {/* A single category-aware market summary replaces the redundant RWA section. */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3" aria-label={`${activeHeading} summary`}>
-        <div className="sunrise-card rounded-xl border-t-2 border-t-blue-500/70 dark:border-t-[#46a6ff]/65 p-4">
+        <div className="sunrise-card rounded-xl border-t-2 border-t-blue-500/70 dark:border-t-sky-400/65 p-4">
           <div className="text-[11px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400">Markets</div>
-          <div className="mt-1 font-mono text-xl font-bold tabular-nums text-blue-600 dark:text-[#46a6ff]">
+          <div className="mt-1 font-mono text-xl font-bold tabular-nums text-blue-600 dark:text-sky-400">
             {loading && markets.length === 0 ? '—' : summary.marketCount.toLocaleString()}
           </div>
         </div>
@@ -164,127 +207,136 @@ export const MarketsPage: React.FC<{
             {loading && markets.length === 0 ? '—' : formatUsd(summary.volume24h, true)}
           </div>
         </div>
-        <div className="sunrise-card rounded-xl border-t-2 border-t-amber-500/70 dark:border-t-[#ffb02e]/65 p-4">
+        <div className="sunrise-card rounded-xl border-t-2 border-t-teal-500/70 dark:border-t-teal-400/65 p-4">
           <div className="text-[11px] font-mono uppercase tracking-wider text-slate-500 dark:text-slate-400">Open Interest (USD)</div>
-          <div className="mt-1 font-mono text-xl font-bold tabular-nums text-amber-600 dark:text-[#ffb02e]">
+          <div className="mt-1 font-mono text-xl font-bold tabular-nums text-teal-600 dark:text-teal-300">
             {loading && markets.length === 0 ? '—' : formatUsd(summary.openInterestUsd, true)}
           </div>
         </div>
       </div>
 
-      {/* Markets Table */}
-      <div className="sunrise-card overflow-hidden rounded-2xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/95 dark:bg-[#090e1a]/80 text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
-              <tr>
-                <th className="py-3 pl-4 pr-2">Ticker</th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => toggleSort('price')}>
-                  <span className="inline-flex items-center gap-1">Mark Price <ArrowDownUp className="h-3 w-3" /></span>
-                </th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => toggleSort('change')}>
-                  <span className="inline-flex items-center gap-1">24h % <ArrowDownUp className="h-3 w-3" /></span>
-                </th>
-                <th className="py-3 px-2 text-center">Trend</th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => toggleSort('volume')}>
-                  <span className="inline-flex items-center gap-1">24h Volume <ArrowDownUp className="h-3 w-3" /></span>
-                </th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => toggleSort('oi')}>
-                  <span className="inline-flex items-center gap-1">Open Interest <ArrowDownUp className="h-3 w-3" /></span>
-                </th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => toggleSort('funding')}>
-                  <span className="inline-flex items-center gap-1">Funding (1h) <ArrowDownUp className="h-3 w-3" /></span>
-                </th>
-                <th className="py-3 px-2 text-right">Max Lev</th>
-                <th className="py-3 pl-2 pr-4 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => toggleSort('positions')}>
-                  Indexed Pos
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 tabular-nums">
-              {loading && (
+      {viewMode === 'heatmap' ? (
+        <MarketHeatmap
+          markets={filteredMarkets}
+          onSelectMarket={onSelectMarket}
+          onOpenScreener={() => setViewMode('screener')}
+          actionLabel="Table Screener →"
+          showSectorFilter={category === 'ALL'}
+        />
+      ) : (
+        /* Markets Screener Table */
+        <div className="sunrise-card min-w-0 overflow-hidden rounded-2xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/95 dark:bg-[#090e1a]/80 text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 <tr>
-                  <td colSpan={9} className="py-10 text-center text-slate-500 dark:text-slate-400">
-                    Loading RISEx markets…
-                  </td>
+                  <th className="py-3 pl-4 pr-2">Ticker</th>
+                  <th className="py-3 px-2 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400" onClick={() => toggleSort('price')}>
+                    <span className="inline-flex items-center gap-1">Mark Price <ArrowDownUp className="h-3 w-3" /></span>
+                  </th>
+                  <th className="py-3 px-2 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400" onClick={() => toggleSort('change')}>
+                    <span className="inline-flex items-center gap-1">24h % <ArrowDownUp className="h-3 w-3" /></span>
+                  </th>
+                  <th className="py-3 px-2 text-center">Trend</th>
+                  <th className="py-3 px-2 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400" onClick={() => toggleSort('volume')}>
+                    <span className="inline-flex items-center gap-1">24h Volume <ArrowDownUp className="h-3 w-3" /></span>
+                  </th>
+                  <th className="py-3 px-2 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400" onClick={() => toggleSort('oi')}>
+                    <span className="inline-flex items-center gap-1">Open Interest <ArrowDownUp className="h-3 w-3" /></span>
+                  </th>
+                  <th className="py-3 px-2 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400" onClick={() => toggleSort('funding')}>
+                    <span className="inline-flex items-center gap-1">Funding (1h) <ArrowDownUp className="h-3 w-3" /></span>
+                  </th>
+                  <th className="py-3 px-2 text-right">Max Lev</th>
+                  <th className="py-3 pl-2 pr-4 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400" onClick={() => toggleSort('positions')}>
+                    Indexed Pos
+                  </th>
                 </tr>
-              )}
-              {!loading &&
-                filteredAndSorted.map((m) => {
-                  const mark = Number(m.mark_price || m.last_price || 0);
-                  const chg = calcMarketChangePct(mark, m.change_24h);
-                  const oiUsd = Number(m.open_interest || 0) * mark;
-                  const fundingPct = Number(m.current_funding_rate || 0) * 100;
-                  return (
-                    <tr
-                      key={m.market_id}
-                      onClick={() => onSelectMarket(String(m.market_id))}
-                      className="cursor-pointer hover:bg-slate-100/80 dark:hover:bg-[#131c31]/70 transition-colors"
-                    >
-                      <td className="py-3 pl-4 pr-2">
-                        <div className="flex items-center gap-2.5">
-                          <TokenBadge symbol={m.base_asset_symbol} category={m.category} size={26} />
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-display text-sm font-semibold text-slate-900 dark:text-[#e8edfb]">
-                                {m.display_name}
-                              </span>
-                              {m.is_new && (
-                                <span className="rounded bg-amber-500/15 dark:bg-[#ffb02e]/20 px-1 py-0.5 text-[9px] font-mono font-bold text-amber-700 dark:text-[#ffb02e]">
-                                  NEW
+              </thead>
+              <tbody className="divide-y divide-slate-200/80 dark:divide-slate-800/60 tabular-nums">
+                {loading && (
+                  <tr>
+                    <td colSpan={9} className="py-10 text-center text-slate-500 dark:text-slate-400">
+                      Loading RISEx markets…
+                    </td>
+                  </tr>
+                )}
+                {!loading &&
+                  filteredAndSorted.map((m) => {
+                    const mark = Number(m.mark_price || m.last_price || 0);
+                    const chg = calcMarketChangePct(mark, m.change_24h);
+                    const oiUsd = Number(m.open_interest || 0) * mark;
+                    const fundingPct = Number(m.current_funding_rate || 0) * 100;
+                    return (
+                      <tr
+                        key={m.market_id}
+                        onClick={() => onSelectMarket(String(m.market_id))}
+                        className="cursor-pointer hover:bg-slate-100/80 dark:hover:bg-[#131c31]/70 transition-colors"
+                      >
+                        <td className="py-3 pl-4 pr-2">
+                          <div className="flex items-center gap-2.5">
+                            <TokenBadge symbol={m.base_asset_symbol} category={m.category} size={26} />
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-display text-sm font-semibold text-slate-900 dark:text-[#e8edfb]">
+                                  {m.display_name}
                                 </span>
-                              )}
-                            </div>
-                            <div className="text-[10px] font-mono text-slate-500">
-                              ID #{m.market_id} · {m.category || 'PERP'}
+                                {m.is_new && (
+                                  <span className="rounded bg-sky-500/15 dark:bg-sky-400/20 px-1 py-0.5 text-[9px] font-mono font-bold text-sky-700 dark:text-sky-300">
+                                    NEW
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[10px] font-mono text-slate-500">
+                                ID #{m.market_id} · {formatCategoryLabel((m.category || 'PERP').toUpperCase())}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-2 text-right font-mono font-medium text-slate-900 dark:text-[#e8edfb]">
-                        {formatPrice(mark)}
-                      </td>
-                      <td
-                        className={`py-3 px-2 text-right font-mono font-semibold ${
-                          chg >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'
-                        }`}
-                      >
-                        {formatPct(chg)}
-                      </td>
-                      <td className="py-3 px-2">
-                        <div className="flex justify-center">
-                          <MarketMiniChart series={miniCharts[String(m.market_id)]} changePct={chg} width={64} height={22} />
-                        </div>
-                      </td>
-                      <td className="py-3 px-2 text-right font-mono text-slate-700 dark:text-slate-200">
-                        {formatUsd(m.quote_volume_24h, true)}
-                      </td>
-                      <td className="py-3 px-2 text-right font-mono text-amber-600 dark:text-[#ffb02e]">
-                        {formatUsd(oiUsd, true)}
-                      </td>
-                      <td
-                        className={`py-3 px-2 text-right font-mono ${
-                          fundingPct >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'
-                        }`}
-                      >
-                        {fundingPct >= 0 ? '+' : ''}
-                        {fundingPct.toFixed(4)}%
-                      </td>
-                      <td className="py-3 px-2 text-right font-mono text-slate-600 dark:text-slate-300">
-                        {m.config?.max_leverage || '—'}x
-                      </td>
-                      <td className="py-3 pl-2 pr-4 text-right font-mono">
-                        {m.indexedStats && m.indexedStats.count > 0 ? (
-                          <span className="rounded bg-blue-500/12 dark:bg-[#46a6ff]/15 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:text-[#46a6ff]">
-                            {m.indexedStats.count}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 dark:text-slate-600">0</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                        </td>
+                        <td className="py-3 px-2 text-right font-mono font-medium text-slate-900 dark:text-[#e8edfb]">
+                          {formatPrice(mark)}
+                        </td>
+                        <td
+                          className={`py-3 px-2 text-right font-mono font-semibold ${
+                            chg >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'
+                          }`}
+                        >
+                          {formatPct(chg)}
+                        </td>
+                        <td className="py-3 px-2">
+                          <div className="flex justify-center">
+                            <MarketMiniChart series={miniCharts[String(m.market_id)]} changePct={chg} width={64} height={22} />
+                          </div>
+                        </td>
+                        <td className="py-3 px-2 text-right font-mono text-slate-700 dark:text-slate-200">
+                          {formatUsd(m.quote_volume_24h, true)}
+                        </td>
+                        <td className="py-3 px-2 text-right font-mono text-teal-600 dark:text-teal-300">
+                          {formatUsd(oiUsd, true)}
+                        </td>
+                        <td
+                          className={`py-3 px-2 text-right font-mono ${
+                            fundingPct >= 0 ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-rose-600 dark:text-[#ff4d6d]'
+                          }`}
+                        >
+                          {fundingPct >= 0 ? '+' : ''}
+                          {fundingPct.toFixed(4)}%
+                        </td>
+                        <td className="py-3 px-2 text-right font-mono text-slate-600 dark:text-slate-300">
+                          {m.config?.max_leverage || '—'}x
+                        </td>
+                        <td className="py-3 pl-2 pr-4 text-right font-mono">
+                          {m.indexedStats && m.indexedStats.count > 0 ? (
+                            <span className="rounded bg-blue-500/12 dark:bg-sky-400/15 px-2 py-0.5 text-[11px] font-semibold text-blue-700 dark:text-sky-300">
+                              {m.indexedStats.count}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 dark:text-slate-600">0</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
               {!loading && filteredAndSorted.length === 0 && (
                 <tr>
                   <td colSpan={9} className="py-12 text-center text-slate-500 dark:text-slate-400">
@@ -296,6 +348,7 @@ export const MarketsPage: React.FC<{
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 };

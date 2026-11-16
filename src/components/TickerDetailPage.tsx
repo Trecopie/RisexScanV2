@@ -508,7 +508,7 @@ export const TickerDetailPage: React.FC<{
           <button
             type="button"
             onClick={onBack}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 hover:border-amber-500/60 hover:text-slate-900 dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-slate-300 dark:hover:border-[#ffb02e]/60 dark:hover:text-[#e8edfb] transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 hover:border-sky-500/60 hover:text-slate-900 dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-slate-300 dark:hover:border-sky-400/60 dark:hover:text-[#e8edfb] transition-colors"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             All Markets
@@ -533,7 +533,7 @@ export const TickerDetailPage: React.FC<{
           <select
             value={marketId}
             onChange={(e) => onSelectMarket(e.target.value)}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-mono text-slate-900 focus:border-amber-500 focus:outline-none dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-[#e8edfb] dark:focus:border-[#ffb02e]"
+            className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-mono text-slate-900 focus:border-sky-500 focus:outline-none dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-[#e8edfb] dark:focus:border-sky-400"
           >
             {allMarkets.map((m) => (
               <option key={m.market_id} value={String(m.market_id)}>
@@ -572,7 +572,7 @@ export const TickerDetailPage: React.FC<{
         </div>
         <div className="sunrise-card rounded-xl p-3.5">
           <div className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">Open Interest</div>
-          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-amber-600 dark:text-[#ffb02e]">
+          <div className="mt-1 font-mono text-lg font-bold tabular-nums text-sky-600 dark:text-sky-400">
             {formatUsd(oiUsd, true)}
           </div>
           <div className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
@@ -604,7 +604,7 @@ export const TickerDetailPage: React.FC<{
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-lg border border-slate-200 bg-slate-50/90 px-3 py-2 text-[10px] font-mono text-slate-600 dark:border-slate-800/60 dark:bg-[#080d18]/70 dark:text-slate-400">
         <span>Last executed <strong className="text-slate-900 dark:text-[#e8edfb]">{lastExecutionPrice > 0 ? formatPrice(lastExecutionPrice) : '—'}</strong></span>
         <span>{lastExecutionTime ? `Last fill ${new Date(lastExecutionTime).toLocaleTimeString()}` : 'Awaiting fills'}</span>
-        <span className={tradeSocketConnected ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-amber-600 dark:text-[#ffb02e]'}>
+        <span className={tradeSocketConnected ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-sky-600 dark:text-sky-400'}>
           {tradeSocketConnected ? '● Trade WS live' : '○ Trade WS reconnecting'}
           {lastTradeReceivedAt ? ` · ${new Date(lastTradeReceivedAt).toLocaleTimeString()}` : ''}
         </span>
@@ -632,29 +632,29 @@ export const TickerDetailPage: React.FC<{
               onClick={() => setBookTab('book')}
               className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors ${
                 bookTab === 'book'
-                  ? 'bg-white text-amber-600 shadow-xs dark:bg-[#131c31] dark:text-[#ffb02e]'
+                  ? 'bg-white text-sky-600 shadow-xs dark:bg-[#131c31] dark:text-sky-300'
                   : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
             >
-              L2 Orderbook <span className={bookIsLive ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-amber-600 dark:text-[#ffb02e]'} title={bookIsLive ? (bookChecksumVerified ? 'CRC32 verified WebSocket L2' : 'Live WS snapshot; awaiting verified delta') : 'REST fallback / reconnecting'}>●</span>
+              L2 Orderbook <span className={bookIsLive ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-sky-600 dark:text-sky-400'} title={bookIsLive ? (bookChecksumVerified ? 'CRC32 verified WebSocket L2' : 'Live WS snapshot; awaiting verified delta') : 'REST fallback / reconnecting'}>●</span>
             </button>
             <button
               type="button"
               onClick={() => setBookTab('trades')}
               className={`flex-1 rounded-lg py-1.5 text-xs font-medium transition-colors ${
                 bookTab === 'trades'
-                  ? 'bg-white text-amber-600 shadow-xs dark:bg-[#131c31] dark:text-[#ffb02e]'
+                  ? 'bg-white text-sky-600 shadow-xs dark:bg-[#131c31] dark:text-sky-300'
                   : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
             >
-              Recent Fills ({trades.length}) <span className={tradeSocketConnected ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-amber-600 dark:text-[#ffb02e]'} title={tradeSocketConnected ? 'Trade stream connected' : 'Trade stream reconnecting'}>●</span>
+              Recent Fills ({trades.length}) <span className={tradeSocketConnected ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-sky-600 dark:text-sky-400'} title={tradeSocketConnected ? 'Trade stream connected' : 'Trade stream reconnecting'}>●</span>
             </button>
           </div>
 
           {bookTab === 'book' ? (
             <div className="flex-1 flex flex-col justify-between text-xs font-mono tabular-nums">
               <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500 dark:text-slate-400">
-                <span className={bookIsLive ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-amber-600 dark:text-[#ffb02e]'}>
+                <span className={bookIsLive ? 'text-emerald-600 dark:text-[#22e0a1]' : 'text-sky-600 dark:text-sky-400'}>
                   {bookIsLive ? (bookChecksumVerified ? '● CRC32 verified WS L2' : '● WS snapshot · awaiting CRC update') : '○ REST snapshot / reconnecting'}
                 </span>
                 <select
@@ -671,7 +671,7 @@ export const TickerDetailPage: React.FC<{
                   L2 received {new Date(bookUpdatedAt).toLocaleTimeString()} · {bookIsLive ? 'WebSocket' : 'last received snapshot'}
                 </div>
               )}
-              {bookResyncs > 0 && <div className="mb-1 text-[10px] text-amber-600 dark:text-[#ffb02e]">L2 checksum mismatch recovery: {bookResyncs} resync{bookResyncs === 1 ? '' : 's'}</div>}
+              {bookResyncs > 0 && <div className="mb-1 text-[10px] text-sky-600 dark:text-sky-400">L2 checksum mismatch recovery: {bookResyncs} resync{bookResyncs === 1 ? '' : 's'}</div>}
               {spread !== null && <div className="mb-1 flex justify-between text-[10px] text-slate-500 dark:text-slate-400">
                 <span>Spread {formatPrice(spread)}</span>
                 <span>{(spread / ((bestAsk + bestBid) / 2) * 10_000).toFixed(2)} bps</span>
@@ -700,7 +700,7 @@ export const TickerDetailPage: React.FC<{
 
               <div className="my-2 flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 dark:border-slate-800 dark:bg-[#090e1a]">
                 <span className="text-[11px] text-slate-500 dark:text-slate-400">Mark</span>
-                <span className="font-bold text-amber-600 dark:text-[#ffb02e]">{formatPrice(markPrice)}</span>
+                <span className="font-bold text-sky-600 dark:text-sky-400">{formatPrice(markPrice)}</span>
               </div>
 
               <div className="space-y-0.5">
@@ -813,7 +813,7 @@ export const TickerDetailPage: React.FC<{
                   onClick={() => setSideFilter(s)}
                   className={`rounded-lg px-2.5 py-1 font-mono transition-colors ${
                     sideFilter === s
-                      ? 'bg-amber-500/18 text-amber-700 font-semibold dark:bg-[#ffb02e]/20 dark:text-[#ffb02e]'
+                      ? 'bg-sky-500/15 text-sky-700 font-semibold dark:bg-sky-400/20 dark:text-sky-300'
                       : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                   }`}
                 >
@@ -828,7 +828,7 @@ export const TickerDetailPage: React.FC<{
                 value={posSearch}
                 onChange={(e) => setPosSearch(e.target.value)}
                 placeholder="Filter username or 0x…"
-                className="rounded-xl border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-amber-500 focus:outline-none dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-[#e8edfb] dark:placeholder:text-slate-500 dark:focus:border-[#ffb02e]"
+                className="rounded-xl border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-xs text-slate-900 placeholder:text-slate-400 focus:border-sky-500 focus:outline-none dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-[#e8edfb] dark:placeholder:text-slate-500 dark:focus:border-sky-400"
               />
             </div>
             <select
@@ -837,7 +837,7 @@ export const TickerDetailPage: React.FC<{
                 setPosSort(e.target.value as PosSortKey);
                 setPosDesc(true);
               }}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-amber-500 focus:outline-none dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-[#e8edfb] dark:focus:border-[#ffb02e]"
+              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-900 focus:border-sky-500 focus:outline-none dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-[#e8edfb] dark:focus:border-sky-400"
             >
               <option value="pnl">Sort: Unrealized PnL</option>
               <option value="roi">Sort: ROI %</option>
@@ -856,20 +856,20 @@ export const TickerDetailPage: React.FC<{
               <tr>
                 <th className="py-3 pl-4 pr-2">Trader</th>
                 <th className="py-3 px-2">Side</th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => togglePosSort('notional')}>
+                <th className="py-3 px-2 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400" onClick={() => togglePosSort('notional')}>
                   <span className="inline-flex items-center gap-1">Position Value <ArrowDownUp className="h-3 w-3" /></span>
                 </th>
                 <th className="py-3 px-2 text-right">Entry</th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => togglePosSort('liqDist')}>
+                <th className="py-3 px-2 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400" onClick={() => togglePosSort('liqDist')}>
                   <span className="inline-flex items-center gap-1">Liq. Price & Risk <ArrowDownUp className="h-3 w-3" /></span>
                 </th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => togglePosSort('pnl')}>
+                <th className="py-3 px-2 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400" onClick={() => togglePosSort('pnl')}>
                   <span className="inline-flex items-center gap-1">Unrealized PnL <ArrowDownUp className="h-3 w-3" /></span>
                 </th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => togglePosSort('roi')}>
+                <th className="py-3 px-2 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400" onClick={() => togglePosSort('roi')}>
                   <span className="inline-flex items-center gap-1">ROI % <ArrowDownUp className="h-3 w-3" /></span>
                 </th>
-                <th className="py-3 px-2 text-right cursor-pointer hover:text-amber-600 dark:hover:text-[#ffb02e]" onClick={() => togglePosSort('portfolioValue')}>
+                <th className="py-3 px-2 text-right cursor-pointer hover:text-sky-600 dark:hover:text-sky-400" onClick={() => togglePosSort('portfolioValue')}>
                   <span className="inline-flex items-center gap-1">Portfolio Value <ArrowDownUp className="h-3 w-3" /></span>
                 </th>
                 <th className="py-3 pl-2 pr-4 text-right">Peek</th>
@@ -879,7 +879,7 @@ export const TickerDetailPage: React.FC<{
               {loading && (
                 <tr>
                   <td colSpan={9} className="py-10 text-center text-slate-500 dark:text-slate-400">
-                    <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin text-amber-500 dark:text-[#ffb02e]" />
+                    <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin text-sky-500 dark:text-sky-400" />
                     Loading trader positions…
                   </td>
                 </tr>
@@ -977,7 +977,7 @@ export const TickerDetailPage: React.FC<{
                             e.stopPropagation();
                             onPeekTrader(p.address);
                           }}
-                          className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 hover:border-amber-500/60 hover:text-amber-600 dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-slate-300 dark:hover:border-[#ffb02e]/60 dark:hover:text-[#ffb02e]"
+                          className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-600 hover:border-sky-500/60 hover:text-sky-600 dark:border-slate-700/60 dark:bg-[#090e1a] dark:text-slate-300 dark:hover:border-sky-400/60 dark:hover:text-sky-300"
                         >
                           <Eye className="h-3.5 w-3.5" />
                         </button>
@@ -994,7 +994,7 @@ export const TickerDetailPage: React.FC<{
       {fundingHistory.length > 0 && (
         <div className="sunrise-card rounded-2xl p-4">
           <div className="mb-3 flex items-center gap-2">
-            <Clock className="h-4 w-4 text-amber-600 dark:text-[#ffb02e]" />
+            <Clock className="h-4 w-4 text-sky-600 dark:text-sky-400" />
             <h3 className="font-display text-sm font-bold text-slate-900 dark:text-[#e8edfb]">Recent Funding Rate Settlements</h3>
           </div>
           <div className="overflow-x-auto">

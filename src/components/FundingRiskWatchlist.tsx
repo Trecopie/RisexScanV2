@@ -164,7 +164,7 @@ export const FundingRiskWatchlist: React.FC<{ onSelectMarket: (id: string) => vo
               }
               setMarketToAdd('');
             }}
-            className="rounded-lg border border-amber-500/45 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-700 whitespace-nowrap disabled:opacity-40 dark:border-[#ffb02e]/40 dark:text-[#ffb02e]"
+            className="rounded-lg border border-sky-500/45 bg-sky-500/10 px-3 py-1.5 text-xs font-semibold text-sky-700 whitespace-nowrap disabled:opacity-40 dark:border-sky-400/40 dark:bg-sky-400/10 dark:text-sky-300"
           >
             + Watch
           </button>
@@ -204,7 +204,7 @@ export const FundingRiskWatchlist: React.FC<{ onSelectMarket: (id: string) => vo
                   <button
                     type="button"
                     onClick={() => onSelectMarket(String(m.market_id))}
-                    className="flex items-center gap-2 text-xs font-semibold text-slate-900 hover:text-amber-600 dark:text-[#e8edfb] dark:hover:text-[#ffb02e]"
+                    className="flex items-center gap-2 text-xs font-semibold text-slate-900 hover:text-sky-600 dark:text-[#e8edfb] dark:hover:text-sky-400"
                   >
                     <TokenBadge symbol={m.base_asset_symbol} category={m.category} size={22} />
                     {m.display_name}
@@ -225,7 +225,7 @@ export const FundingRiskWatchlist: React.FC<{ onSelectMarket: (id: string) => vo
                   <span
                     className={
                       high
-                        ? 'text-amber-600 dark:text-[#ffb02e] font-bold'
+                        ? 'text-orange-600 dark:text-orange-400 font-bold'
                         : apr >= 0
                           ? 'text-emerald-600 dark:text-[#22e0a1]'
                           : 'text-rose-600 dark:text-[#ff4d6d]'
